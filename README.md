@@ -81,15 +81,42 @@ loads the real rules file, so what passes is what is deployed.
 
 ## The Cloud Function is written but not deployed
 
-`functions/src/index.ts` pushes a status to the partner's device over FCM, which is what
-lets the Live Update change while the app is closed. **It is not deployed, and it cannot
-be on the current project plan.** `pair-4791e` has `billingEnabled: false` — the Spark
-plan — and Cloud Functions, Cloud Run, Eventarc, Cloud Build and Artifact Registry all
-require the Blaze plan. The APIs are disabled, so `firebase deploy --only functions`
-fails with `SERVICE_DISABLED`.
+`functions/src/index.ts` pushes a status to the partner's device over FCM. **It is not
+deployed, and it cannot be on the current project plan.** `pair-4791e` has
+`billingEnabled: false` — the Spark plan — and Cloud Functions, Cloud Run, Eventarc, Cloud Build
+and Artifact Registry all require the Blaze plan. The APIs are disabled, so
+`firebase deploy --only functions` fails with `SERVICE_DISABLED`.
 
-Until that changes, the chip updates through the in-app database listener only, which is
-alive while the app is in the foreground.
+The function stays in the repository because it is the right answer, and because the trigger bug
+it fixed was real: it watched `/rooms/{roomId}/live` with `onValueCreated`, which only fires when
+the parent node is created, so it pushed once per room, ever. It is now `onValueWritten` on the
+per-uid child, with the sender read from the path rather than the payload.
+
+## How the live status stays live without it
+
+Since a push cannot be sent, the wake-up is done by the app. `LiveUpdateService` is *already*
+running for as long as there is a chip — owning a foreground service is what Live Update
+promotion requires — so all that was missing was a listener. While the Live Update is up, the
+service now watches the room and re-posts the notification whenever the status it should be
+showing changes. The partner sets a status, and the chip updates on a closed app.
+
+Three things make that correct rather than merely working:
+
+- **One rule decides what the chip says.** `decideLiveUpdate` in
+  `notifications/LiveUpdateDecision.kt` is used by both the room screen and the service. The
+  displayed text comes from `LiveTexts.forViewer`, the same expression everywhere, so the chip
+  cannot disagree with the room screen. The decision is a pure function precisely so it could be
+  tested — 11 assertions cover it.
+- **The service is sticky, and recovers.** Android reclaims background processes routinely; on
+  restart it recovers the room from preferences and re-reads it, rather than re-posting a stale
+  string or dropping the chip.
+- **It stops when there is nothing to show.** A blank status, a room that can no longer be read,
+  or Live Updates switched off all withdraw the chip and stop the service, so a silent room costs
+  nothing.
+
+The cost, stated plainly: one database connection held open for as long as there is a status to
+show. It is not polling — it is a single listener on a single node, idle when nothing changes.
+It does not survive a force-stop from Android recents, which no app can survive.
 
 ---
 
@@ -175,21 +202,37 @@ which has no brand colour.
 
 ### Unit tests
 
-`RoomId`, `TimeWindow`, `LocationRule` and `Room`'s membership rules — the pure logic, where a
-mistake is silent and a wrong answer is a user's lost room. 33 tests.
+`RoomId`, `TimeWindow`, `LocationRule`, `Room`'s membership rules, `LiveTexts` and
+`decideLiveUpdate` — the pure logic, where a mistake is silent and a wrong answer is a user's lost
+room. 56 tests, plus 25 rules assertions in `database-rules-test/`.
 
 Two of them found real bugs while being written, both now fixed: a `TimeWindow` whose end equalled
 its start matched *every* minute of the day, and a card painted with `primaryContainer` was
 invisible against the design's own background.
+
+`decideLiveUpdate` exists because the Live Update is decided in two places — the room screen while
+the app is open, the notification service while it is closed — and two copies of a rule is how
+they stop agreeing. Extracting it as a pure function is what made it testable at all; the
+`Service` around it is full of notification-manager calls, none of which run on the JVM. One of
+its tests protects something manual testing would miss: the service posts the chip and *then*
+subscribes, so the subscription's first emission arrives immediately after a successful post, and
+reading it as "nothing to show" would withdraw the chip the instant it appeared.
 
 ### Not yet verified
 
 - **Geofencing end to end.** The registrar, the receiver and `WallpaperStore.applySystem` are
   written and the pure parts are tested, but no geofence has actually fired. Needs a device:
   grant location, add a rule, `adb emu geo fix <lon> <lat>`, confirm the wallpaper changes.
+- **The Live Update while the app is closed.** The service's watch, its sticky restart and the
+  decision logic are all unit-tested, and the database listener it depends on is the same one the
+  app already used. But it has never actually run on a device: this host has no emulator, so
+  whether the system lets the chip update from a background service — rather than silently
+  dropping the update, which is what happened to the earlier `Withdrawing a Live Update` problem
+  below — is unconfirmed. Needs two devices: close both, set a status on one, read the other.
 - **Withdrawing a Live Update.** The notification posts correctly and is withheld while paused,
   but a Live Update that was posted and *then* cleared has been seen to persist. The cause is not
-  diagnosed.
+  diagnosed. The watch now withdraws on a blank status, but whether the platform honours the
+  withdrawal is the same open question.
 - **The typeface.** The comps' "Partner" is a Didone. Pair uses Roboto Serif Italic, so the name
   is wider than the design at the same cap height; the size was chosen to fit rather than to match
   the width.

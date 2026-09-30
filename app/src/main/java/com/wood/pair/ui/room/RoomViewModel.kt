@@ -14,7 +14,9 @@ import com.wood.pair.data.repository.RoomError
 import com.wood.pair.data.repository.RoomObservation
 import com.wood.pair.data.repository.RoomRepository
 import com.wood.pair.data.repository.RoomResult
+import com.wood.pair.notifications.LiveUpdateDecision
 import com.wood.pair.notifications.LiveUpdateService
+import com.wood.pair.notifications.decideLiveUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -334,7 +336,20 @@ class RoomViewModel(
         // The Live Update carries the *partner's* status when there is one, because that is what
         // the notification is for. With no partner it carries mine, so the feature is still
         // observable while you are waiting rather than appearing only once someone arrives.
-        postLiveUpdate(room.live.forViewer(viewer, room.partnerOf(viewer)))
+        //
+        // The decision of what to show, and whether to show anything, is made by
+        // [decideLiveUpdate] — the same function the notification service uses while the app is
+        // closed. One rule, two callers, so the chip cannot disagree with the room screen; and
+        // calling it from here as well means the chip reacts on the same frame as the UI rather
+        // than one database round trip later.
+        onLiveUpdateDecision(
+            decideLiveUpdate(
+                observation = RoomObservation.Ready(room),
+                uid = viewer,
+                liveUpdateEnabled = local.value.liveUpdateEnabled,
+                currentlyShown = lastNotifiedText,
+            ),
+        )
     }
 
     // ---------------------------------------------------------------- editing
@@ -457,9 +472,7 @@ class RoomViewModel(
     // ---------------------------------------------------------------- live update
 
     /**
-     * Keeps the ongoing notification in step with the room.
-     *
-     * [text] is the status to display, already resolved to the partner's when there is one.
+     * Carries out a [LiveUpdateDecision] against the ongoing notification.
      *
      * A room with nothing to say is *paused*: no status means no status bar entry. Posting
      * "Nothing yet" would occupy a permanent surface on the user's screen to say nothing, and it
@@ -467,30 +480,34 @@ class RoomViewModel(
      * to want it. The Live Update therefore appears when there is something to show and is
      * withdrawn when there is not, and the room screen's indicator is the visible counterpart.
      *
+     * *What* to show is not decided here. It is [decideLiveUpdate], which is shared with
+     * [LiveUpdateService] — the same function that decides while the app is closed and the
+     * service is the only thing listening. One rule with two callers is what keeps the chip and
+     * this screen telling the same story; two copies of the rule is how they stop agreeing.
+     *
      * Called for every room event, whether the value came from this device or the partner, which
      * is what makes "no partner", "partner joined" and "partner cleared it" all behave correctly
      * without any of them needing a special case at the call site.
      */
-    private fun postLiveUpdate(text: String) {
-        if (!local.value.liveUpdateEnabled) {
-            cancelLiveUpdate()
-            return
-        }
+    private fun onLiveUpdateDecision(decision: LiveUpdateDecision) {
+        when (decision) {
+            LiveUpdateDecision.Unchanged -> Unit
 
-        if (text.isBlank()) {
-            // Paused. Withdraw rather than re-post, and remember the withdrawal so clearing the
-            // text once does not re-post on every subsequent room event.
-            if (lastNotifiedText != null) cancelLiveUpdate()
-            return
-        }
+            is LiveUpdateDecision.Post -> {
+                lastNotifiedText = decision.text
 
-        if (text == lastNotifiedText) return
-        lastNotifiedText = text
+                // Dispatched off the main thread: the notification manager is a binder call and
+                // there is no reason to spend a frame on it while typing.
+                notificationScope.launchSafely("Live Update post") {
+                    LiveUpdateService.show(application, roomId, decision.text)
+                }
+            }
 
-        // Dispatched off the main thread: the notification manager is a binder call and there
-        // is no reason to spend a frame on it while typing.
-        notificationScope.launchSafely("Live Update post") {
-            LiveUpdateService.show(application, roomId, text)
+            LiveUpdateDecision.Withdraw -> {
+                // Only clear when something was actually up, so a room that is already quiet
+                // does not issue a cancellation on every room event.
+                if (lastNotifiedText != null) cancelLiveUpdate()
+            }
         }
     }
 
