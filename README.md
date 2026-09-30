@@ -231,6 +231,31 @@ its tests protects something manual testing would miss: the service posts the ch
 subscribes, so the subscription's first emission arrives immediately after a successful post, and
 reading it as "nothing to show" would withdraw the chip the instant it appeared.
 
+### The always-on display
+
+The Live Update reaches the always-on display, and the switch that controls it is **not** in
+the app. It is a per-app system setting, alongside a separate `POST_PROMOTED_NOTIFICATIONS`
+permission, and the two gate different things:
+
+| | Governs | Pair can influence it |
+|---|---|---|
+| `POST_PROMOTED_NOTIFICATIONS` | whether the Live Update is posted at all | yes — the user grants it |
+| Per-app AOD content setting | whether the lock screen renders it | no |
+
+**Settings → Notifications → Pair → notification content on the always-on display.** On
+Android 16 this is a three-way choice, and the middle option is not the one that sounds like
+it enables everything:
+
+- **Silent** — the notification exists, the status bar chip exists, and the lock screen shows
+  nothing. This is the setting most likely to be mistaken for a bug in the app.
+- **Default** — the Live Update appears on the always-on display.
+
+This was found by hand on a device, not by a test, and it is the reason the AOD behaviour is
+recorded here rather than asserted. Nothing in the app needs to change for it, and there is no
+API to set it: an app cannot opt itself into the user's lock screen. If the Live Update is
+missing from the AOD and present in the shade, this setting is the first thing to check, before
+concluding anything about promotion.
+
 ### Not yet verified
 
 - **Geofencing end to end.** The registrar, the receiver and `WallpaperStore.applySystem` are
