@@ -28,6 +28,12 @@ import com.wood.pair.ui.rules.LocationRulesScreen
 import com.wood.pair.ui.rules.RuleEditorScreen
 import com.wood.pair.ui.settings.SettingsScreen
 import com.wood.pair.ui.theme.pairMotion
+import androidx.compose.runtime.CompositionLocalProvider
+import kotlinx.coroutines.flow.mapNotNull
+import com.wood.pair.ui.components.LocalNavPillPosition
+import com.wood.pair.ui.components.PairDestination
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 
 /** Destinations in the app. */
 object Routes {
@@ -70,27 +76,58 @@ fun PairApp(
     val startRoomId = localState?.currentRoomId?.takeIf { RoomId.isValid(it) }
 
     /**
+     * Whether the cached preferences have actually been read yet.
+     *
+     * `null` is not "no room" and is not "not onboarded" - it is *not known yet*. DataStore is
+     * asynchronous, so for the first frame or two after a cold start the app genuinely does not
+     * know who the user is, and every one of those states has a different screen to show.
+     *
+     * Nothing below may be built until this is true, and that gate is the fix for the bug this
+     * replaces. `NavHost` reads its `startDestination` **once**, when the `NavController` is
+     * created, and never again. Recomputing the value when preferences arrived therefore did
+     * nothing at all: the first frame decided the whole session.
+     *
+     * And the first frame decided it wrongly twice over, because `hasCompletedOnboarding` was
+     * `localState?.hasCompletedOnboarding == true`, which is `false` while loading. So a returning
+     * user with a live room got, in sequence:
+     *
+     *   1. Onboarding - a returning user was shown the sign-up screen,
+     *   2. Home       - "You are not in a room", contradicting the room they were in,
+     *   3. the room   - only if the deep-link effect happened to rescue it, which it does not on a
+     *                   cold start with no deep link.
+     *
+     * Waiting for the read costs one or two frames of nothing, painted with the app's own
+     * background, and removes all three. It is the difference between the cached state being the
+     * *first* thing shown rather than a correction applied to a wrong first guess.
+     */
+    if (localState == null) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize(),
+        ) {}
+        return
+    }
+
+    /**
      * Where the app opens.
      *
      * With a room, the room. The room is the product: someone opening Pair wants to see where the
-     * other person is, and that is a tap away on Home. Home is the right *frame* — it holds the
-     * room card, and the two Create/Join actions — but it is the wrong first screen for someone
+     * other person is, and that is a tap away on Home. Home is the right *frame* - it holds the
+     * room card, and the two Create/Join actions - but it is the wrong first screen for someone
      * who already has a room, because it puts the thing they came for one layer down and makes
      * them press a card to reach the single piece of live information the app exists to show.
      *
      * Without a room, Home, because there is nothing else to show and the Create/Join pair there
      * is the only way forward.
      *
-     * Keyed on the room id as well as the flag, because a room can be *left* while the app is
-     * running: leaving navigates explicitly, but a stale `startDestination` would otherwise be
-     * what the next cold start used.
+     * Not wrapped in `remember`. Now that it is evaluated only once - behind the gate above - a
+     * remembered value could only ever be stale: leaving a room and cold-starting again would
+     * reuse the destination computed while the room still existed.
      */
-    val startDestination = remember(hasCompletedOnboarding, startRoomId) {
-        when {
-            !hasCompletedOnboarding -> Routes.ONBOARDING
-            startRoomId != null -> Routes.room(startRoomId)
-            else -> Routes.HOME
-        }
+    val startDestination = when {
+        !hasCompletedOnboarding -> Routes.ONBOARDING
+        startRoomId != null -> Routes.room(startRoomId)
+        else -> Routes.HOME
     }
 
     // A Live Update tap arrives as a deep link. Navigating once the graph exists avoids racing
@@ -120,6 +157,16 @@ fun PairApp(
         // Every spec comes from the app's own [com.wood.pair.ui.theme.MotionScheme], so reduced
         // motion collapses all of this to instant cuts in one place rather than at each screen.
         val motion = MaterialTheme.pairMotion
+
+        // The bottom bar's selection pill, owned here so its position survives navigation.
+        //
+        // The bar itself is rebuilt by every destination, so a pill that remembers where it was
+        // has to live above the NavHost. See [LocalNavPillPosition] for why the alternatives -
+        // an `animateDpAsState` in the bar, or a "previous destination" threaded down - both
+        // produce a pill that appears rather than moves.
+        val pillPosition = remember { Animatable(0f) }
+
+        CompositionLocalProvider(LocalNavPillPosition provides pillPosition) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
@@ -253,5 +300,19 @@ fun PairApp(
             )
         }
         }
+        }
     }
 }
+
+/**
+ * Maps a navigation route onto the bottom-bar destination it represents.
+ *
+ * Several routes collapse onto one destination: the rule editor is reached from the rules list
+ * and highlights the same nav item as it does. Mapping them to the same value is what lets the
+ * pill treat an editor-to-list move as "no change" and stay put, instead of sliding to where it
+ * already was.
+ *
+ * Returns null for a route with no bar representation - Onboarding and Settings - so callers
+ * treating "no destination" and "no previous destination" the same way is correct rather than
+ * merely convenient.
+ */

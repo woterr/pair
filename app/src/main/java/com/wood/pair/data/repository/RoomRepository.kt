@@ -404,6 +404,25 @@ class RoomRepository(
         slotRef(roomId).existsOnce()
     }
 
+    /**
+     * Reads a room once and returns it, or null if it is gone or [uid] is not a member of it.
+     *
+     * A single read rather than a subscription, for callers that are not a screen. The
+     * notification's reply receiver is the motivating case: it has just written a status and needs
+     * to know what this device's Live Update should now say, once, and then to be finished with.
+     * Opening a listener there would keep the process alive for no reason and would need its own
+     * teardown inside a ten-second broadcast window.
+     *
+     * Returns null rather than throwing for the same reason [observeRoom] resolves to
+     * [RoomObservation.Unavailable]: not being able to see the room is a state, not a fault.
+     */
+    suspend fun readRoomOnce(roomId: String, uid: String?): Room? =
+        firebaseWithTimeout(what = "room read") {
+            val snapshot = roomRef(roomId).snapshotFlow().firstSnapshotOrNull()
+            val room = snapshot?.toRoomOrNull(roomId)
+            if (room == null || !room.isMember(uid)) null else room
+        }
+
     private companion object {
         const val TAG = "RoomRepository"
         const val MAX_ID_ATTEMPTS = 6

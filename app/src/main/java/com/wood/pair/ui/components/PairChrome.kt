@@ -90,23 +90,23 @@ fun PairTopBar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(end = 10.dp),
         )
-        // 36dp with a 1.5dp ring, where it was a 42dp disc with no edge at all.
+        // 30dp with a 1dp ring.
         //
-        // The size: at 42dp the avatar was taller than the 24dp display name beside it, so the
-        // right-hand end of the bar was visually heavier than the left and the name stopped being
-        // the thing you read. 36dp keeps the avatar clearly a chip on the name rather than a
-        // portrait next to it.
+        // The size has come down twice now: 42dp, then 36dp, and both were still reading as a
+        // portrait *next to* the name rather than as a chip *on* it. The thing that makes it read
+        // as a portrait is being taller than the 24dp name, so the fix is to be shorter than it.
+        // At 30dp the avatar is a marker on the name, and the name is what you read.
         //
-        // The ring: without one the avatar is a soft-edged photo floating on the page background,
-        // and its boundary is only findable because the artwork happens to contrast. A hairline in
-        // `outlineVariant` gives it an edge that holds on any palette - including the monochrome
-        // one, where a white avatar on a black page has no edge of its own. `outlineVariant` and
-        // not `primary`, so it reads as a boundary rather than as a selection.
+        // The ring is why the edge survives: without one the avatar is a soft-edged photo
+        // floating on the page background, findable only because the artwork happens to contrast.
+        // A hairline in `outlineVariant` holds on any palette, including the monochrome one where
+        // a white avatar on a black page has no edge of its own. `outlineVariant` and not
+        // `primary`, so it reads as a boundary rather than as a selection.
         Avatar(
             resId = avatarResId,
-            size = 36.dp,
+            size = 30.dp,
             initial = displayName,
-            borderWidth = 1.5.dp,
+            borderWidth = 1.dp,
             borderColor = MaterialTheme.colorScheme.outlineVariant,
         )
     }

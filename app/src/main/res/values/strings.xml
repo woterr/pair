@@ -47,6 +47,9 @@
     <string name="room_id_label">Room %1$s</string>
     <string name="room_live_attribution">%1$s \u00B7 %2$s</string>
     <string name="room_live_text_empty_label">Nothing yet</string>
+    <string name="room_status_reply_action">Set status</string>
+    <string name="room_status_reply_label">Where are you?</string>
+    <string name="room_status_open_action">Open Pair</string>
     <string name="room_paired_with">You are paired with</string>
     <string name="room_partner_status">%1$s\'s status</string>
     <string name="room_partner_nothing_yet">Nothing from them yet</string>
@@ -206,6 +209,9 @@
     <string name="end_time">End time</string>
     <string name="active_days">Active days</string>
     <string name="wallpaper">Wallpaper</string>
+    <string name="wallpaper_target_home">Home</string>
+    <string name="wallpaper_target_lock">Lock</string>
+    <string name="wallpaper_target_both">Both</string>
     <string name="save_rule">Save rule</string>
     <string name="battery_optimization">Battery Optimization</string>
     <string name="within_radius_days">Within %1$s meters. %2$s</string>

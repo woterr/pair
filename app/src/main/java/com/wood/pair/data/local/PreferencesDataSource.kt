@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.io.IOException
+import kotlinx.coroutines.flow.first
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "pair_prefs")
 
@@ -81,6 +82,19 @@ class PreferencesDataSource(private val context: Context) {
     val currentRoomId: Flow<String?> = state.map { it.currentRoomId }.distinctUntilChanged()
     val appearance: Flow<Appearance> = state.map { it.appearance }.distinctUntilChanged()
     val liveUpdateEnabled: Flow<Boolean> = state.map { it.liveUpdateEnabled }.distinctUntilChanged()
+
+    /**
+     * The current room id, read once.
+     *
+     * For callers that are not a screen and cannot collect a flow for the length of their life:
+     * the notification's reply receiver, which has a ten-second broadcast window and needs to
+     * confirm the room it is about to write to is still this device's room. Collecting
+     * [currentRoomId] there would need a teardown that a broadcast cannot rely on being called.
+     *
+     * Returns null before the first read completes, which callers must treat as "unknown, do not
+     * write" rather than "no room" - the difference is a failed reply versus a silent success.
+     */
+    suspend fun currentRoomIdOrNull(): String? = currentRoomId.first()
 
     suspend fun setDisplayName(name: String) {
         context.dataStore.edit { it[Keys.DisplayName] = name.trim() }

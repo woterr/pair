@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import com.wood.pair.data.model.LocationRule
+import com.wood.pair.data.model.WallpaperTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -79,22 +80,25 @@ class WallpaperStore(context: Context) {
         }
 
     /**
-     * Sets the system wallpaper from a stored reference.
+     * Sets a wallpaper from a stored reference, on the surfaces [target] names.
      *
      * A [SecurityException] is reported as a rejection rather than a crash: some OEM builds
      * and managed devices restrict wallpaper changes, and the user deserves to be told that
      * instead of watching the app die.
      */
-    suspend fun applySystem(reference: String): WallpaperResult = withContext(Dispatchers.IO) {
+    suspend fun apply(
+        reference: String,
+        target: WallpaperTarget = WallpaperTarget.Home,
+    ): WallpaperResult = withContext(Dispatchers.IO) {
         runCatching {
             val bitmap = loadPreview(reference, maxDimensionPx = MAX_WALLPAPER_PX)
                 ?: return@runCatching WallpaperResult.Rejected("The image could not be read")
             val manager = android.app.WallpaperManager.getInstance(appContext)
             manager.setBitmap(
-                bitmap,
+                cropToWallpaperAspect(bitmap, wallpaperSize(manager, target)),
                 null,
                 true,
-                android.app.WallpaperManager.FLAG_SYSTEM,
+                target.flags,
             )
             WallpaperResult.Applied
         }.getOrElse { error ->
@@ -105,6 +109,73 @@ class WallpaperStore(context: Context) {
             }
             Log.w(TAG, "Wallpaper change failed", error)
             WallpaperResult.Rejected(message)
+        }
+    }
+
+    /** The old name, kept so the call sites that do not choose a surface still read clearly. */
+    suspend fun applySystem(reference: String): WallpaperResult =
+        apply(reference, WallpaperTarget.Home)
+
+    /**
+     * The pixel size the target surface actually wants.
+     *
+     * Home and lock wallpapers are not the same size on any phone - the lock one is taller,
+     * because it has to clear the clock and the shortcut row - so a single hard-coded size would
+     * be wrong for one of them on every device.
+     *
+     * [WallpaperManager.getDesiredMinimumWidth] / `Height` are the system's own advice for the
+     * surface being set. They are zero on some builds, so the display size is the fallback rather
+     * than the answer.
+     */
+    private fun wallpaperSize(
+        manager: android.app.WallpaperManager,
+        target: WallpaperTarget,
+    ): Pair<Int, Int> {
+        val width = manager.desiredMinimumWidth
+        val height = manager.desiredMinimumHeight
+        if (width > 0 && height > 0) return width to height
+        val metrics = appContext.resources.displayMetrics
+        return metrics.widthPixels to metrics.heightPixels
+    }
+
+    /**
+     * Centre-crops [bitmap] to [target]'s aspect ratio.
+     *
+     * ## Why the crop is done here rather than left to the system
+     *
+     * `WallpaperManager.setBitmap` scales the image to cover the surface, and on a mismatch
+     * between the image's aspect and the surface's, "cover" is either a stretch or a letterbox
+     * depending on the build. Both were reported: a portrait photo on a tall lock screen came out
+     * squeezed, and a wide photo on the same screen came out with black bars down the sides.
+     *
+     * Neither is a defect of the image. The only correct answer for "fill this surface" is to
+     * keep the image's proportions and throw away the overflow, and the only place that can be
+     * decided with knowledge of *this* device's surface is here. The result is exactly
+     * `ContentScale.Crop`: no distortion, and no gaps, because the crop fills the frame by
+     * construction.
+     *
+     * Returns the original bitmap untouched when its aspect already matches, so the common case
+     * costs nothing and the common case is the one that is already right.
+     */
+    private fun cropToWallpaperAspect(bitmap: Bitmap, target: Pair<Int, Int>): Bitmap {
+        val (targetWidth, targetHeight) = target
+        if (targetWidth <= 0 || targetHeight <= 0) return bitmap
+        if (bitmap.width <= 0 || bitmap.height <= 0) return bitmap
+
+        val sourceRatio = bitmap.width.toFloat() / bitmap.height
+        val targetRatio = targetWidth.toFloat() / targetHeight
+        if (kotlin.math.abs(sourceRatio - targetRatio) < ASPECT_TOLERANCE) return bitmap
+
+        return if (sourceRatio > targetRatio) {
+            // Too wide: keep full height, take a narrower slice from the middle.
+            val cropWidth = (bitmap.height * targetRatio).toInt().coerceIn(1, bitmap.width)
+            val left = (bitmap.width - cropWidth) / 2
+            Bitmap.createBitmap(bitmap, left, 0, cropWidth, bitmap.height)
+        } else {
+            // Too tall: keep full width, take a shorter slice from the middle.
+            val cropHeight = (bitmap.width / targetRatio).toInt().coerceIn(1, bitmap.height)
+            val top = (bitmap.height - cropHeight) / 2
+            Bitmap.createBitmap(bitmap, 0, top, bitmap.width, cropHeight)
         }
     }
 
@@ -126,5 +197,14 @@ class WallpaperStore(context: Context) {
          * memory here.
          */
         const val MAX_WALLPAPER_PX = 4096
+
+        /**
+                 * How close two aspect ratios must be before the crop is skipped.
+                 *
+                 * A tenth of a percent. Loose enough that ordinary camera output is left alone, tight
+                 * enough that a genuinely different frame - a 4:3 photo on a 19.5:9 screen - is cropped
+                 * rather than squeezed.
+                 */
+                const val ASPECT_TOLERANCE = 0.001f
     }
 }

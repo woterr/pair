@@ -58,6 +58,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
  * The three top-level destinations, in the order the comps show them.
@@ -75,8 +80,7 @@ enum class PairDestination(
     val outlinedIcon: ImageVector,
     val filledIcon: ImageVector,
     val labelRes: Int,
-) {
-    Home(
+) {    Home(
         outlinedIcon = Icons.Outlined.Home,
         filledIcon = Icons.Filled.Home,
         labelRes = R.string.nav_home,
@@ -92,6 +96,50 @@ enum class PairDestination(
         labelRes = R.string.nav_location,
     ),
 }
+
+/**
+ * The destinations the bar shows, given whether a room exists.
+ *
+ * One definition, used by the bar to lay out and by [PairScaffold] to decide whether a screen's
+ * own destination is even present. Two lists would be two chances to disagree, and the
+ * disagreement would look like a bar that had lost an icon.
+ */
+private fun visibleDestinations(hasRoom: Boolean): List<PairDestination> = if (hasRoom) {
+    listOf(PairDestination.Pair, PairDestination.Location)
+} else {
+    listOf(PairDestination.Home, PairDestination.Location)
+}
+
+/**
+ * The selection pill's position, held above the navigation graph.
+ *
+ * ## Why the pill is not owned by the bar
+ *
+ * Every screen hosts its own `PairBottomBar` through `PairScaffold`, so the bar is destroyed and
+ * rebuilt on every navigation. Anything the pill needs to remember in order to *move* therefore
+ * has to live above the graph, or it is gone before the new bar composes.
+ *
+ * The two obvious alternatives both fail, and it is worth recording why:
+ *
+ *  - **`animateDpAsState` inside the bar.** It initialises to its target on first composition, so
+ *    the new bar's pill starts on the new item and there is no travel at all.
+ *  - **A remembered "previous destination" passed down.** It is a frame behind: the value is
+ *    written from an effect that runs *after* composition, so the new bar has already read the
+ *    stale one. And seeding an `Animatable` from it cannot be corrected afterwards, because the
+ *    seed is read once.
+ *
+ * Owning the position itself sidesteps both. The value simply persists across the navigation, so
+ * the new bar retargets a spring that is already sitting where the pill actually is - no history
+ * to reconstruct, nothing to get out of order, and the pill travels in whichever direction the
+ * user actually went.
+ */
+val LocalNavPillPosition: ProvidableCompositionLocal<Animatable<Float, AnimationVector1D>> =
+    staticCompositionLocalOf {
+        // A value that exists even if no provider is installed, so a bar rendered in a preview or
+        // a screenshot test still draws a pill rather than throwing. It is not animated because
+        // nothing drives it there.
+        Animatable(0f)
+    }
 
 /**
  * The one bottom-bar router, shared by every screen.
@@ -110,9 +158,10 @@ enum class PairDestination(
  * first click" report. Silently ignoring a destination is never the right answer: either the item
  * goes somewhere, or it explains why it cannot.
  *
- * So Pair with no room now says so. That is the only honest outcome: the room tab is a real place
- * that does not exist yet, and the actionable response to finding that out is to learn where to
- * create or join one, which is what the message points at.
+ * The snackbar is now a backstop rather than the main answer: [PairBottomBar] no longer offers
+ * Pair without a room in the first place, so the branch is unreachable from the bar. It stays
+ * because a destination can still be routed to by something other than the bar, and a dead
+ * branch that degrades quietly is how the original bug happened.
  */
 @Composable
 fun rememberDestinationRouter(
@@ -156,25 +205,27 @@ fun PairBottomBar(
     onSelect: (PairDestination) -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    /**
-     * Whether the Pair destination is shown at all.
-     *
-     * There is no room, so there is no room screen, and a navigation item that leads to a page
-     * which does not exist is a dead control. It was previously always present and answered the
-     * tap with a snackbar explaining the absence — which is *less* honest than not offering it,
-     * because the bar then advertises a destination and withdraws it on contact. The router keeps
-     * its snackbar as a backstop, but the item is now simply absent while the room is.
-     *
-     * The selection pill is positioned off the *visible* list, not off `PairDestination.ordinal`,
-     * so removing an item moves the pill rather than stranding it between two.
-     */
-    showPair: Boolean = true,
+    hasRoom: Boolean = true,
 ) {
-    val destinations = if (showPair) {
-        PairDestination.entries
-    } else {
-        PairDestination.entries.filter { it != PairDestination.Pair }
-    }
+    /**
+     * Which destinations exist right now.
+     *
+     * The bar shows **one** of Home and Pair, never both, and always shows Location.
+     *
+     * The reasoning is that Home and Pair are the same destination in two states rather than two
+     * places. Home is what you look at when you have no room - it holds the Create and Join
+     * actions, which are the only way forward from there. Pair is what you look at when you do
+     * have one, because that is the live status. Offering both at once put the user one tap and a
+     * decision away from the answer they came for; offering neither would strand someone, so
+     * exactly one is always present.
+     *
+     * Location rules are orthogonal - they are useful in both states - so it is always shown.
+     *
+     * The selection pill is indexed against *this* list, not against `PairDestination.ordinal`.
+     * Ordinals run 0,1,2 over three destinations, and with one of them removed the Location pill
+     * would be drawn at index 2 - past the end of the bar.
+     */
+    val destinations = visibleDestinations(hasRoom)
     val selectedIndex = destinations.indexOf(selected)
     val motion = LocalMotionScheme.current
 
@@ -182,14 +233,22 @@ fun PairBottomBar(
     // does not itself move, and Material's table puts small components on the fast tokens. On
     // `default` spatial the pill trailed the page it was meant to be confirming, and the gap
     // between the press and the highlight arriving was the most noticeable lag in the app.
-    val indicatorOffset by androidx.compose.animation.core.animateDpAsState(
-        // Indexed against the *visible* list. The old code used `selected.ordinal`, which assumes
-        // all three destinations are present; with the Pair item removed, the Location pill would
-        // have been drawn at index 2 and sat past the end of the bar.
-        targetValue = if (selectedIndex >= 0) (12.dp + (60 * selectedIndex).dp) else 12.dp,
-        animationSpec = motion.fastSpatialSpec(),
-        label = "navIndicatorOffset",
-    )
+    //
+    // The position lives in [LocalNavPillPosition], above the graph, so it survives the
+    // navigation that rebuilds this bar. The spring therefore starts from wherever the pill
+    // actually is rather than from the new item, which is the whole difference between a pill
+    // that slides and one that blinks into place.
+    val pillPosition = LocalNavPillPosition.current
+    LaunchedEffect(selectedIndex, destinations) {
+        // Settings has no selection; the pill parks under the first item rather than vanishing,
+        // so the bar does not appear to lose a piece of itself on a screen that highlights
+        // nothing.
+        pillPosition.animateTo(
+            targetValue = if (selectedIndex >= 0) selectedIndex.toFloat() else 0f,
+            animationSpec = motion.fastSpatialSpec(),
+        )
+    }
+    val indicatorOffset = (12.dp + (60 * pillPosition.value).dp)
     val indicatorAlpha by animateFloatAsState(
         targetValue = if (selectedIndex >= 0) 1f else 0f,
         animationSpec = motion.fastEffectsSpec(),
@@ -412,10 +471,11 @@ fun PairScaffold(
     onSelectDestination: (PairDestination) -> Unit = {},
     onOpenSettings: () -> Unit = {},
     /**
-     * Whether a room exists. Drives whether the Pair destination is in the bar at all.
+     * Whether a room exists, which decides whether the bar offers Pair or Home.
      *
      * A parameter rather than something the bar reads for itself, because the bar has no view of
-     * the room and every screen already knows the answer.
+     * the room and every screen already knows the answer. See [PairBottomBar] for why the bar
+     * shows exactly one of the two.
      */
     hasRoom: Boolean = true,
     snackbarHostState: androidx.compose.material3.SnackbarHostState? = null,
@@ -448,10 +508,21 @@ fun PairScaffold(
 
         if (selectedDestination != null) {
             PairBottomBar(
-                selected = selectedDestination,
+                // Nulled when the screen's own destination is one the bar is not currently showing.
+                //
+                // Home and Pair take each other's place depending on whether a room exists, so a
+                // screen can be perfectly reachable while its nav item is absent — the rules
+                // list, reached from a room, for instance, or Home itself if a room was created
+                // while sitting on it. Passing the hidden destination through made the bar render
+                // with *no* selection at all, because the pill's index lookup failed and its alpha
+                // went to zero: a bar that had quietly lost a piece of itself.
+                //
+                // Null is the honest answer. Nothing is selected because nothing on this screen
+                // corresponds to anything in the bar.
+                selected = selectedDestination.takeIf { it in visibleDestinations(hasRoom) },
                 onSelect = onSelectDestination,
                 onSettings = onOpenSettings,
-                showPair = hasRoom,
+                hasRoom = hasRoom,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }

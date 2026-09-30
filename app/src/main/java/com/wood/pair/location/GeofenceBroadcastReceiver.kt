@@ -74,7 +74,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                         Log.i(TAG, "Rule ${rule.id} matched a place but its time window excluded it")
                         return@forEach
                     }
-                    when (val outcome = graph.wallpaperStore.applySystem(rule.wallpaperUri)) {
+                    when (val outcome = graph.wallpaperStore.apply(rule.wallpaperUri, rule.wallpaperTarget)) {
                         is WallpaperResult.Applied ->
                             Log.i(TAG, "Applied wallpaper for rule ${rule.id} (${rule.label})")
 

@@ -496,7 +496,7 @@ internal fun SettingsContent(
                 snackbarHostState = snackbarHostState,
             ),
             onSettings = {},
-            showPair = state.currentRoomId != null,
+            hasRoom = state.currentRoomId != null,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 

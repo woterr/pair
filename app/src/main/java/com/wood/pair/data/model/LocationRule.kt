@@ -1,7 +1,65 @@
 package com.wood.pair.data.model
 
+import android.app.WallpaperManager
 import java.util.Calendar
 import java.util.UUID
+
+/**
+ * Which wallpaper surfaces a rule changes.
+ *
+ * ## Why a rule needs to choose
+ *
+ * "Home screen wallpaper" and "lock screen wallpaper" are two separate things on Android, set
+ * through two separate flags, and a person who cares about one very often does not want the
+ * other. Setting both by default is how you end up with a lock screen nobody chose: the app
+ * changes something the user never asked it to, on the surface they look at most, and there is
+ * no per-rule way to undo it short of deleting the rule.
+ *
+ * [Both] exists because plenty of people do want the pair of them, and that should be one tap
+ * rather than two rules fighting over the same place.
+ *
+ * The stored value is the [name] of one of these, never the ordinal. Ordinals are a wire format
+ * for a list that has already been written down somewhere; renaming a case would silently
+ * re-point every existing rule at a different surface.
+ */
+enum class WallpaperTarget(val storageKey: String) {
+    /** The home and app drawer. */
+    Home("home"),
+
+    /** The lock screen and always-on display. */
+    Lock("lock"),
+
+    /** Both surfaces, set in one pass so they never briefly disagree. */
+    Both("both"),
+    ;
+
+    /**
+     * The [WallpaperManager] flags this target needs.
+     *
+     * [Both] is a single combined value rather than two calls, because two calls set the two
+     * surfaces at slightly different moments and a person glancing at the device during the
+     * second sees a mismatched pair.
+     */
+    val flags: Int
+        get() = when (this) {
+            Home -> WallpaperManager.FLAG_SYSTEM
+            Lock -> WallpaperManager.FLAG_LOCK
+            Both -> WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK
+        }
+
+    companion object {
+        /**
+         * Reads a stored key, falling back to [Home].
+         *
+         * The fallback rather than a throw is deliberate: a rule written by an older build has no
+         * target, and losing somebody's wallpaper rule because a new field was added would be a
+         * far worse outcome than that rule landing on the default surface. [Home] is the default
+         * because it is the less intrusive of the two and the one the app always did.
+         */
+        fun fromStorageKey(key: String?): WallpaperTarget =
+            entries.firstOrNull { it.storageKey == key } ?: Home
+    }
+}
 
 /**
  * An optional time condition on a location rule.
@@ -59,6 +117,14 @@ data class LocationRule(
     val timeWindow: TimeWindow?,
     val wallpaperUri: String,
     val isActive: Boolean = true,
+    /**
+     * Which surfaces this rule changes. See [WallpaperTarget] for why it is a choice rather than
+     * a constant.
+     *
+     * Defaults to [WallpaperTarget.Home], which is what every rule did before this field
+     * existed, so an existing rule keeps behaving exactly as it did.
+     */
+    val wallpaperTarget: WallpaperTarget = WallpaperTarget.Home,
 ) {
     companion object {
         /** Android's practical minimum geofence radius, in metres. */

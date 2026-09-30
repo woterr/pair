@@ -13,6 +13,9 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationManagerCompat
 import com.wood.pair.MainActivity
 import com.wood.pair.R
+import android.app.RemoteInput
+import android.graphics.drawable.Icon
+import com.wood.pair.data.model.Room
 
 /**
  * The Pair Live Update.
@@ -207,8 +210,28 @@ object LiveUpdateNotifier {
             .setShowWhen(false)
             .setLocalOnly(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
+            // The body tap is NOT a deep link any more.
+            //
+            // It used to open the room, which meant the fastest possible answer to "where are
+            // they" - a glance at the chip, tap, type - cost an app launch, a Compose tree, a
+            // network read and a wait. The chip is the *only* surface Pair shows permanently, so
+            // it has to be actionable where it already is.
+            //
+            // With a [RemoteInput] action attached, the platform renders an inline text field in
+            // the expanded Live Update, and a body tap expands the Live Update rather than firing
+            // this intent. The intent is therefore the fallback for the cases where expansion
+            // does not happen, and it opens the room - which is the right thing to do for
+            // somebody who tapped the chip wanting to look at it rather than answer it.
+            //
+            // Being honest about the limit: there is no public API to *force* a Live Update to
+            // expand, so on some launchers a body tap still lands here. On those, the inline
+            // field is one tap away via the action, and the app opens. Forcing it to expand
+            // would mean a translucent Activity that grabs focus, which is worse on every other
+            // interaction.
             .setContentIntent(deepLink(context, roomId))
             .setDeleteIntent(deepLink(context, roomId))
+            .addAction(replyAction(context, roomId))
+            .addAction(openAction(context, roomId))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             applyLiveUpdateFields(builder, fullText)
@@ -258,4 +281,61 @@ object LiveUpdateNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
+
+    /**
+     * The inline reply field: "change the status without opening the app".
+     *
+     * A [RemoteInput] is the platform's own mechanism for this and there is no Compose equivalent.
+     * The system renders the field inside the expanded Live Update, and hands the typed text back
+     * to [LiveUpdateReplyReceiver] as part of the broadcast intent.
+     *
+     * `allowFreeFormInput` is on and the max length is the same [Room.MAX_TEXT_LENGTH] the app
+     * enforces everywhere else, so the field cannot accept a status that the database rules or
+     * the app would then have to reject — the write fails identically on both paths rather than
+     * only here.
+     *
+     * The two request codes are different *per room* and different from each other, because
+     * `PendingIntent` equality ignores extras: two actions that shared a request code would share
+     * one intent, and the second room to post would be handed the first room's id.
+     */
+    private fun replyAction(context: Context, roomId: String): Notification.Action {
+        val remoteInput = RemoteInput.Builder(LiveUpdateReplyReceiver.KEY_STATUS_INPUT)
+            .setLabel(context.getString(R.string.room_status_reply_label))
+            .setAllowFreeFormInput(true)
+            .build()
+
+        val reply = Intent(context, LiveUpdateReplyReceiver::class.java).apply {
+            action = LiveUpdateReplyReceiver.ACTION_REPLY
+            putExtra(LiveUpdateReplyReceiver.EXTRA_ROOM_ID, roomId)
+        }
+
+        return Notification.Action.Builder(
+            Icon.createWithResource(context, R.drawable.ic_pair_blob_outline),
+            context.getString(R.string.room_status_reply_action),
+            PendingIntent.getBroadcast(
+                context,
+                replyRequestCode(roomId),
+                reply,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+            ),
+        )
+            .addRemoteInput(remoteInput)
+            // Without `semanticsAction` the accessibility services announce the action as a bare
+            // label with no hint that it takes typed input.
+            .setSemanticAction(Notification.Action.SEMANTIC_ACTION_REPLY)
+            .setAllowGeneratedReplies(true)
+            .build()
+    }
+
+    /** A second action, so the app is still one tap away rather than only via the body. */
+    private fun openAction(context: Context, roomId: String): Notification.Action =
+        Notification.Action.Builder(
+            Icon.createWithResource(context, R.drawable.ic_pair_wordmark),
+            context.getString(R.string.room_status_open_action),
+            deepLink(context, roomId),
+        ).build()
+
+    /** Distinct per room, and distinct from the reply code so the two never collide. */
+    private fun replyRequestCode(roomId: String): Int =
+        notificationId(roomId) * 31 + 17
 }

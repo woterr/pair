@@ -92,6 +92,7 @@ class SettingsAndRulesRenderTest : ScreenRenderTest() {
                 onEndMinuteChange = {},
                 onToggleDay = {},
                 onPickWallpaper = {},
+                onWallpaperTargetChange = {},
                 onSave = {},
                 onSelectDestination = {},
                 onOpenSettings = {},

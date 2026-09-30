@@ -16,6 +16,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -102,6 +103,10 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.ripple
 import com.wood.pair.ui.theme.Space
+import com.wood.pair.data.model.WallpaperTarget
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 
 /**
  * The one letter per day, as the comp draws them.
@@ -184,6 +189,7 @@ fun RuleEditorScreen(
         onStartMinuteChange = viewModel::onStartMinuteChange,
         onEndMinuteChange = viewModel::onEndMinuteChange,
         onToggleDay = viewModel::toggleDay,
+        onWallpaperTargetChange = viewModel::onWallpaperTargetChange,
         onPickWallpaper = {
             imagePicker.launch(
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
@@ -223,6 +229,7 @@ internal fun RuleEditorContent(
     onEndMinuteChange: (Int) -> Unit,
     onToggleDay: (Int) -> Unit,
     onPickWallpaper: () -> Unit,
+    onWallpaperTargetChange: (WallpaperTarget) -> Unit,
     onSave: () -> Unit,
     onSelectDestination: (PairDestination) -> Unit,
     onOpenSettings: () -> Unit,
@@ -254,6 +261,7 @@ internal fun RuleEditorContent(
             onEndMinuteChange = onEndMinuteChange,
             onToggleDay = onToggleDay,
             onPickWallpaper = onPickWallpaper,
+            onWallpaperTargetChange = onWallpaperTargetChange,
             onSave = onSave,
             bottomPadding = bottomPadding,
         )
@@ -275,6 +283,7 @@ private fun RuleEditorBody(
     onEndMinuteChange: (Int) -> Unit,
     onToggleDay: (Int) -> Unit,
     onPickWallpaper: () -> Unit,
+    onWallpaperTargetChange: (WallpaperTarget) -> Unit,
     onSave: () -> Unit,
     bottomPadding: Dp,
 ) {
@@ -348,7 +357,9 @@ private fun RuleEditorBody(
         WallpaperCard(
             reference = state.wallpaperReference,
             loader = wallpaperStore,
+            target = state.wallpaperTarget,
             onPick = onPickWallpaper,
+            onTargetChange = onWallpaperTargetChange,
         )
 
         // The error sits directly above the button it blocks, so the reason the save did not
@@ -859,7 +870,9 @@ private fun TimeField(
 private fun WallpaperCard(
     reference: String,
     loader: WallpaperStore?,
+    target: WallpaperTarget,
     onPick: () -> Unit,
+    onTargetChange: (WallpaperTarget) -> Unit,
 ) {
     Card2 {
         Text(
@@ -873,6 +886,59 @@ private fun WallpaperCard(
             loader = loader,
             onPick = onPick,
         )
+        Spacer(Modifier.height(Space.labelGap))
+        WallpaperTargetSelector(selected = target, onSelect = onTargetChange)
+    }
+}
+
+/**
+ * Home screen, lock screen, or both.
+ *
+ * A segmented control rather than a switch or a dropdown, because it is three named choices and
+ * only one can be true - the same reason the theme picker is a track rather than a list. A switch
+ * could only express "on or off" and would need a second control to say *which*.
+ *
+ * The lock screen is a separate surface from the home screen on Android, and the two are set
+ * independently, so the choice is real and consequential rather than cosmetic. Defaults to
+ * [WallpaperTarget.Home], the less intrusive of the two.
+ */
+@Composable
+private fun WallpaperTargetSelector(
+    selected: WallpaperTarget,
+    onSelect: (WallpaperTarget) -> Unit,
+) {
+    val options = listOf(
+        WallpaperTarget.Home to R.string.wallpaper_target_home,
+        WallpaperTarget.Lock to R.string.wallpaper_target_lock,
+        WallpaperTarget.Both to R.string.wallpaper_target_both,
+    )
+
+    // No animation spec here on purpose: `SegmentedButton` is a Material component and already
+    // drives its own indicator from the theme's motion scheme. Reaching in to hand it a spec would
+    // be the same class of mistake as passing one to an M3 button - the component is the thing
+    // that knows how fast *its own* selection should move.
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (target, labelRes) ->
+            SegmentedButton(
+                selected = selected == target,
+                onClick = { onSelect(target) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                modifier = Modifier.weight(1f),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    activeContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    inactiveContainerColor = PairSurfaces.card,
+                    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                icon = {},
+            ) {
+                Text(
+                    text = stringResource(labelRes),
+                    style = MaterialTheme.pairTypography.status,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -924,30 +990,13 @@ private fun WallpaperPreview(
 
             // Bottom-start, so it never covers the face in a portrait wallpaper, which is what
             // people crop to.
-            Surface(
-                shape = MaterialTheme.pairShapes.pill,
-                color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                contentColor = MaterialTheme.colorScheme.surface,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(Space.panelPadding),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Image,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.rules_wallpaper_change),
-                        style = MaterialTheme.pairTypography.status,
-                    )
-                }
-            }
+            //
+            // The badge is scrim-and-fixed-colour, which is the problem: on a dark wallpaper the
+            // "Change" label was dark-on-dark and effectively invisible, and the control that
+            // makes a set wallpaper replaceable became undiscoverable on exactly the images most
+            // likely to be chosen for a lock screen. The foreground is now chosen from the
+            // image's own brightness, the same rule the status bar and notification icons use.
+            WallpaperChangeBadge(bitmap = bitmap)
         }
     } else {
         Surface(
@@ -971,6 +1020,88 @@ private fun WallpaperPreview(
             }
         }
     }
+}
+
+/**
+ * The "Change" affordance on a set wallpaper, legible on any image.
+ *
+ * ## Why the colour is measured rather than chosen
+ *
+ * A fixed scrim and a fixed foreground only work on an average image. On a dark wallpaper the
+ * label went dark-on-dark and disappeared, which quietly removed the only affordance for
+ * replacing a wallpaper - and dark images are exactly the ones people pick for a lock screen.
+ *
+ * So the scrim's *own* luminance is sampled from the image, once, on a 1x1 decode, and the
+ * foreground is picked from the opposite pole. That is the same rule the platform uses for status
+ * bar and notification icons, and for the same reason: contrast has to be decided against the
+ * background it will be drawn on, which here is arbitrary.
+ *
+ * A 1x1 decode is a few hundred bytes and runs once per selection, not per frame. The result is
+ * remembered against the bitmap so recomposition does not resample.
+ */
+@Composable
+private fun BoxScope.WallpaperChangeBadge(bitmap: android.graphics.Bitmap) {
+    val dark = remember(bitmap) { bitmap.averageLuminanceIsDark() }
+
+    Surface(
+        shape = MaterialTheme.pairShapes.pill,
+        // A near-opaque scrim, so the sampled polarity is about the image and not about us. A
+        // translucent one would let a bright patch under a dark one flip the contrast back.
+        color = if (dark) Color.Black.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.82f),
+        contentColor = if (dark) Color.White else Color.Black,
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .padding(Space.panelPadding),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Image,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = stringResource(R.string.rules_wallpaper_change),
+                style = MaterialTheme.pairTypography.status,
+            )
+        }
+    }
+}
+
+/**
+ * Whether this image is dark enough to need light text on it.
+ *
+ * Perceptual luminance rather than an average of the channels: a saturated blue and a saturated
+ * yellow have the same channel average and completely different perceived brightness, and one of
+ * them will defeat a naive threshold.
+ *
+ * The 0.5 pivot on a 0..1 linear scale is the same one the platform's own contrast helpers use
+ * for deciding light-on-dark, rather than a value tuned to look right on one screenshot.
+ */
+private fun android.graphics.Bitmap.averageLuminanceIsDark(): Boolean {
+    val sample = runCatching {
+        val scaled = android.graphics.Bitmap.createScaledBitmap(this, 1, 1, true)
+        val pixel = IntArray(1)
+        scaled.getPixels(pixel, 0, 1, 0, 0, 1, 1)
+        // getPixels has already sRGB-decoded for us, so undo the transfer curve per channel to
+        // get something linear to weight.
+        pixel[0]
+    }.getOrNull() ?: return true
+
+    val red = srgbToLinear((sample shr 16) and 0xFF)
+    val green = srgbToLinear((sample shr 8) and 0xFF)
+    val blue = srgbToLinear(sample and 0xFF)
+    val luminance = 0.2126f * red + 0.7152f * green + 0.0722f * blue
+    return luminance < 0.5f
+}
+
+/** One channel of sRGB, normalised, as linear light. */
+private fun srgbToLinear(channel: Int): Float {
+    val c = channel / 255f
+    return if (c <= 0.04045f) c / 12.92f else Math.pow(((c + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
 }
 
 /** The editor's one card shape, so every panel here is the same surface. */

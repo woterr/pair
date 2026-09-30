@@ -121,6 +121,16 @@
             </intent-filter>
         </service>
 
+        <!--
+            Handles a status typed into the Live Update's inline field.
+
+            `exported="false"` is correct and sufficient: the intent arrives through a
+            PendingIntent issued by this app, which runs as this app. Nothing outside the app can
+            reach it, so a status cannot be set by another application.
+        -->
+        <receiver
+            android:name=".notifications.LiveUpdateReplyReceiver"
+            android:exported="false" />
         <!-- Geofence callbacks: enter, exit, dwell, expiration. -->
         <receiver
             android:name=".location.GeofenceBroadcastReceiver"

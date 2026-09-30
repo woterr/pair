@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.wood.pair.data.model.WallpaperTarget
 
 /** State of the list of location rules. */
 data class RulesUiState(
@@ -101,6 +102,8 @@ data class RuleEditorUiState(
     val endMinute: Int = 18 * 60,
     val daysOfWeek: Set<Int> = setOf(1, 2, 3, 4, 5, 6, 7),
     val wallpaperReference: String = "",
+    /** Which surfaces this rule will change. See [WallpaperTarget]. */
+    val wallpaperTarget: WallpaperTarget = WallpaperTarget.Home,
     val isSaving: Boolean = false,
     val isLoading: Boolean = false,
     val error: RuleEditorError? = null,
@@ -183,6 +186,7 @@ class RuleEditorViewModel(
                     daysOfWeek = existing.timeWindow?.daysOfWeek
                         ?: setOf(1, 2, 3, 4, 5, 6, 7),
                     wallpaperReference = existing.wallpaperUri,
+                    wallpaperTarget = existing.wallpaperTarget,
                     displayName = current.displayName,
                     avatarId = current.avatarId,
                     currentRoomId = current.currentRoomId,
@@ -260,6 +264,16 @@ class RuleEditorViewModel(
      * Local storage keeps the rule working after the original photo is deleted, and avoids
      * holding a content-URI permission or uploading anything personal.
      */
+    /**
+     * Records which surfaces this rule should change.
+     *
+     * Takes effect on save, like every other field here, so the screen never shows a combination
+     * the stored rule does not actually have.
+     */
+    fun onWallpaperTargetChange(target: WallpaperTarget) {
+        _uiState.value = _uiState.value.copy(wallpaperTarget = target, error = null)
+    }
+
     fun onWallpaperPicked(uri: Uri) {
         viewModelScope.launch {
             val reference = wallpaperStore.importImage(uri)
@@ -300,6 +314,7 @@ class RuleEditorViewModel(
                     null
                 },
                 wallpaperUri = state.wallpaperReference,
+                wallpaperTarget = state.wallpaperTarget,
                 isActive = true,
             )
             ruleDataSource.upsert(rule)
@@ -312,7 +327,12 @@ class RuleEditorViewModel(
     fun previewWallpaper(onResult: (WallpaperResult) -> Unit) {
         val reference = _uiState.value.wallpaperReference
         if (reference.isBlank()) return
-        viewModelScope.launch { onResult(wallpaperStore.applySystem(reference)) }
+        viewModelScope.launch {
+            // The chosen surface, not a hard-coded one: previewing "Lock screen" and then
+            // watching the home screen change would tell the user the opposite of what they
+            // asked to see.
+            onResult(wallpaperStore.apply(reference, _uiState.value.wallpaperTarget))
+        }
     }
 
     fun hasLocationPermission(): Boolean = geofenceRegistrar.hasLocationPermission()

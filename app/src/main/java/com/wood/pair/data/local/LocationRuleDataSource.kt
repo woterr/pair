@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.wood.pair.data.model.LocationRule
+import com.wood.pair.data.model.WallpaperTarget
 import com.wood.pair.data.model.TimeWindow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -68,6 +69,8 @@ class LocationRuleDataSource(context: Context) {
                 put("lon", rule.longitude)
                 put("radius", rule.radiusMeters.toDouble())
                 put("wallpaper", rule.wallpaperUri)
+                // The enum's storage key, not its ordinal. See `WallpaperTarget`.
+                put("wallpaperTarget", rule.wallpaperTarget.storageKey)
                 put("active", rule.isActive)
                 rule.timeWindow?.let { window ->
                     put(
@@ -123,6 +126,9 @@ class LocationRuleDataSource(context: Context) {
             timeWindow = optJSONObject("time")?.toTimeWindow(),
             wallpaperUri = wallpaper,
             isActive = optBoolean("active", true),
+            // Absent on every rule written before this field existed, which resolves to the
+            // default rather than failing the parse and losing the rule entirely.
+            wallpaperTarget = WallpaperTarget.fromStorageKey(optString("wallpaperTarget")),
         )
     }.getOrNull()
 
