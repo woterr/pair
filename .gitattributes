@@ -1,0 +1,51 @@
+# Normalise line endings in the repository, so everyone gets the same bytes.
+#
+# `* text=auto` lets Git detect text vs binary, then the rules below pin the
+# result. Without this, a Windows clone checks out `gradlew` with CRLF and the
+# Gradle wrapper fails on Linux and macOS with "bad interpreter" or
+# "Permission denied" - the single most common way a fresh clone of an Android
+# repo fails to build.
+
+* text=auto eol=lf
+
+# The Gradle wrapper is a shell script. It must be LF and must be executable,
+# or `./gradlew` is not runnable.
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+gradle/wrapper/gradle-wrapper.jar binary
+
+# Build scripts and Kotlin sources: LF, and text.
+*.kt text eol=lf
+*.kts text eol=lf
+*.java text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.pro text eol=lf
+*.properties text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.ts text eol=lf
+
+# Windows batch files genuinely need CRLF to run.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never touched: these are not text, and normalising them corrupts them.
+*.jar binary
+*.apk binary
+*.aab binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.9.png binary
+
+# Note: `.gitattributes` has no negation syntax. `.env` needs no rule here -
+# it is matched by `* text=auto eol=lf`, which is what we want for it. If it
+# ever stops being tracked the cause will be a global `core.excludesFile`, not
+# this file.

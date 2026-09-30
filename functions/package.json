@@ -1,0 +1,23 @@
+{
+  "name": "pair-functions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pair Cloud Functions: delivers remote Live Updates over FCM",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

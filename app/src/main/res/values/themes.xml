@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+        Compose owns all in-app visuals, including the background.
+
+        The window background is deliberately transparent: every screen draws its own
+        background from the resolved Material color scheme, so dynamic colour and the AMOLED
+        true-black setting are always honoured. Leaving a static colour here would show
+        through on any screen without a Surface, and would contradict the app's own theme.
+    -->
+    <style name="Theme.Pair" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="29">false</item>
+    </style>
+
+    <!-- Launch theme: keeps the launch screen blank rather than flashing a white window. -->
+    <style name="Theme.Pair.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/pair_window_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.Pair</item>
+    </style>
+</resources>

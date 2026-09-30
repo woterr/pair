@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pair</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Pair</string>
+    <string name="onboarding_name_label">Your name</string>
+    <string name="onboarding_name_hint">What should we call you?</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_tagline">A private, always-on connection between two people.</string>
+    <string name="onboarding_name_required">Enter a name to continue</string>
+    <string name="onboarding_name_too_long">Keep it under 40 characters</string>
+
+    <!-- Home -->
+    <string name="home_title">Pair</string>
+    <string name="home_create_room">Create room</string>
+    <string name="home_create_room_long">Create a room</string>
+    <string name="home_join_room">Join room</string>
+    <string name="home_continue_to_room">Continue to room</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_your_name_is">You are %1$s</string>
+    <string name="home_no_room_yet">You are not in a room yet.</string>
+
+    <!-- Join -->
+    <string name="join_title">Join room</string>
+    <string name="join_room_id_label">Room ID</string>
+    <string name="join_room_id_hint">A7K92P</string>
+    <string name="join_confirm">Join</string>
+    <string name="join_cancel">Cancel</string>
+
+    <!-- Room -->
+    <string name="room_waiting_for_partner">Waiting for your partner…</string>
+    <string name="room_partner_joined">%1$s joined</string>
+    <string name="room_partner_left">%1$s left</string>
+    <string name="room_copy_id">Copy</string>
+    <string name="room_id_copied">Room ID copied</string>
+    <string name="room_live_label">Live</string>
+    <string name="room_edit_live_text">Edit live text</string>
+    <string name="room_live_text_hint">Type what your partner sees right now…</string>
+    <string name="room_clear">Clear</string>
+    <string name="room_leave">Leave room</string>
+    <string name="room_leave_title">Leave this room?</string>
+    <string name="room_leave_body">Your Live Update will be cancelled and your partner will see that you left.</string>
+    <string name="room_live_update_off">Live Update paused</string>
+    <string name="room_you">You</string>
+    <string name="room_partner_unknown">Partner</string>
+    <string name="room_id_label">Room %1$s</string>
+    <string name="room_live_attribution">%1$s \u00B7 %2$s</string>
+    <string name="room_live_text_empty_label">Nothing yet</string>
+    <string name="room_paired_with">You are paired with</string>
+    <string name="room_partner_status">%1$s\'s status</string>
+    <string name="room_partner_nothing_yet">Nothing from them yet</string>
+    <string name="room_your_status_to">Your status, for %1$s</string>
+    <string name="room_your_status_alone">Your status</string>
+    <string name="room_status_sent">Status sent: %1$s</string>
+    <string name="room_solo_explainer">Nobody else is in this room yet, so whatever you write is shown back to you. As soon as a partner joins, it is shown to them instead, and whatever they write is shown to you.</string>
+    <string name="room_solo_explainer_title">Nobody else is here yet</string>
+    <string name="room_solo_explain_cd">How this works while you are alone</string>
+
+    <!-- Connection state -->
+    <string name="connection_connected">Connected</string>
+    <string name="connection_offline">Offline</string>
+    <string name="connection_syncing">Waiting to sync</string>
+    <string name="connection_state_label">%1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_display_name">Display name</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Material You colors</string>
+    <string name="settings_dynamic_color_summary">Follow the system palette</string>
+    <string name="settings_amoled">True black</string>
+    <string name="settings_amoled_summary">Pure black backgrounds for OLED displays</string>
+    <string name="settings_dynamic_color_unsupported">Requires Android 12 or newer</string>
+    <string name="settings_live_updates">Live Updates</string>
+    <string name="settings_live_update_enabled">Show Live Update</string>
+    <string name="settings_live_update_enabled_summary">Show the live text in the status bar</string>
+    <string name="settings_live_update_permission">Notification permission</string>
+    <string name="settings_permission_granted">Granted</string>
+    <string name="settings_permission_denied">Not granted</string>
+    <string name="settings_permission_blocked">Blocked in system settings</string>
+    <string name="settings_notification_support">Live Updates need Android 16 or newer for the status bar chip</string>
+    <string name="settings_location_rules">Location rules</string>
+    <string name="settings_location_rules_summary">Change your wallpaper when you arrive somewhere</string>
+    <string name="settings_about">About Pair</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_leave_room">Leave room</string>
+    <string name="settings_room_section">Room</string>
+    <string name="settings_no_room">You are not in a room.</string>
+    <string name="settings_open_settings">Open settings</string>
+    <string name="settings_reset_name">Change</string>
+    <string name="settings_save_name">Save</string>
+    <string name="settings_edit_name">Change your display name</string>
+    <string name="settings_choose_avatar">Choose an avatar</string>
+    <string name="settings_location">Location</string>
+    <string name="settings_battery_summary">Let Pair run in the background so rules still apply</string>
+    <string name="settings_location_permission">Location permission</string>
+    <string name="battery_allowed">Allowed</string>
+    <string name="battery_restricted">Restricted</string>
+
+    <!-- Location rules -->
+    <string name="rules_title">Location rules</string>
+    <string name="rules_empty">No rules yet. Add one to change your wallpaper when you arrive somewhere.</string>
+    <string name="rules_add">Add rule</string>
+    <string name="rules_edit">Edit rule</string>
+    <string name="rules_location">Location</string>
+    <string name="rules_location_pick">Choose location</string>
+    <string name="rules_location_unset">Not chosen</string>
+    <string name="rules_location_unavailable">Could not get your current location. Try again outdoors.</string>
+    <string name="rules_radius">Radius</string>
+    <string name="rules_time">Time restriction</string>
+    <string name="rules_time_any">No time restriction</string>
+    <string name="rules_wallpaper">Wallpaper</string>
+    <string name="rules_wallpaper_pick">Choose image</string>
+    <string name="rules_wallpaper_unset">Not chosen</string>
+    <string name="rules_wallpaper_change">Change</string>
+    <string name="rules_save">Save</string>
+    <string name="rules_delete">Delete</string>
+    <string name="rules_cancel">Cancel</string>
+    <string name="rules_confirm">OK</string>
+    <string name="rules_enter_time">Enter time</string>
+    <string name="rules_needs_location">Choose a location first</string>
+    <string name="rules_needs_wallpaper">Choose an image first</string>
+    <string name="rules_permission_rationale">Pair needs location access to know when you arrive at a place you chose.</string>
+    <string name="rules_grant_location">Grant location access</string>
+    <string name="rules_background_note">Allow background location so rules still apply when Pair is closed.</string>
+    <string name="rules_open_background_settings">Open background access</string>
+    <string name="rules_active">Active</string>
+    <string name="rules_paused">Paused</string>
+    <string name="rules_toggle">Rule active</string>
+    <string name="rules_pick_image_title">Choose an image</string>
+    <string name="rules_permission_needed">Permission needed</string>
+    <string name="rules_geofence_failed">Could not register the geofence: %1$s</string>
+
+    <!-- Errors -->
+    <string name="error_room_not_found">Room not found.</string>
+    <string name="error_room_full">Room is full.</string>
+    <string name="error_invalid_room_id">That is not a valid room ID.</string>
+    <string name="error_not_a_member">You are no longer in this room.</string>
+    <string name="error_offline">You are offline. Check your connection and try again.</string>
+    <string name="error_timed_out">That took too long. Check your connection and try again.</string>
+    <string name="error_auth_failed">Could not start a secure session.</string>
+    <string name="error_generic">Something went wrong.</string>
+    <string name="error_retry">Try again</string>
+    <string name="error_dismiss">Dismiss</string>
+    <string name="error_create_failed">Could not create a room.</string>
+    <string name="error_join_failed">Could not join the room.</string>
+    <string name="error_leave_failed">Could not leave the room cleanly.</string>
+    <string name="error_wallpaper_failed">Could not set the wallpaper.</string>
+    <string name="error_notifications_blocked">Notifications are blocked for Pair.</string>
+
+    <!-- Actions / accessibility -->
+    <string name="action_back">Back</string>
+    <string name="action_done">Done</string>
+    <string name="cd_room_id">Room ID %1$s</string>
+    <string name="cd_live_text_current">Current live text: %1$s</string>
+    <string name="cd_live_text_empty">Current live text is empty</string>
+    <string name="cd_connection_connected">Database connection: connected</string>
+    <string name="cd_connection_offline">Database connection: offline</string>
+    <string name="cd_copy_room_id">Copy the room ID</string>
+    <string name="cd_wallpaper_preview">Wallpaper preview for %1$s</string>
+    <string name="cd_rule_summary">%1$s, within %2$d metres</string>
+
+    <!-- Debug-only second device, used to test the whole product on one phone -->
+    <string name="peer_title">Second device (debug)</string>
+    <string name="peer_explain">A real second Pair identity on this phone, with its own account and push token. Use it to test pairing, the full and not-found cases, and remote updates without a second handset.</string>
+    <string name="peer_sign_in">Create second identity</string>
+    <string name="peer_default_name">Peer</string>
+    <string name="peer_join_label">Room ID</string>
+    <string name="peer_join">Join</string>
+    <string name="peer_leave">Leave</string>
+    <string name="peer_send_label">Live text to send</string>
+    <string name="peer_send">Send</string>
+    <string name="peer_reset">Reset</string>
+    <string name="peer_signed_out">No second identity yet</string>
+    <string name="peer_own_notification">Also show the peer\'s own Live Update</string>
+    <string name="peer_own_notification_summary">Adds a second notification carrying the same words, to check the peer\'s side.</string>
+
+    <!-- Wordmark and navigation -->
+    <string name="wordmark_sub">with your</string>
+    <string name="wordmark_partner">Partner</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_pair">Pair</string>
+    <string name="nav_location">Location</string>
+    <string name="nav_no_room">You are not in a room yet. Create or join one from Home.</string>
+    <string name="or_label">Or…</string>
+    <string name="join_a_room">Join a room</string>
+    <string name="set_status">Set status</string>
+    <string name="location_wallpaper">Location Wallpaper</string>
+    <string name="location_wallpaper_body">Add rules to change your wallpaper based on your location.\nFor example, a picture of your partner when at home, and a picture of abstract art when at work.</string>
+    <string name="active_presets">Active presets (%1$d)</string>
+    <string name="add_rule">Add rule</string>
+    <string name="place_name">Place name</string>
+    <string name="lat_value">Lat %1$s</string>
+    <string name="long_value">Long %1$s</string>
+    <string name="set_current_location">Set current location</string>
+    <string name="location_access_required">Location access required</string>
+    <string name="open_background_access">Open background access</string>
+    <string name="geofence_radius">Geofence radius</string>
+    <string name="time_restriction">Time restriction</string>
+    <string name="start_time">Start time</string>
+    <string name="end_time">End time</string>
+    <string name="active_days">Active days</string>
+    <string name="wallpaper">Wallpaper</string>
+    <string name="save_rule">Save rule</string>
+    <string name="battery_optimization">Battery Optimization</string>
+    <string name="within_radius_days">Within %1$s meters. %2$s</string>
+    <string name="all_days">All days</string>
+    <string name="cd_paused">Paused</string>
+</resources>

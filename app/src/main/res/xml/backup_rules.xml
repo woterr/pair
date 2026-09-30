@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backup rules.
+
+    Only the app's own DataStore is backed up: the display name, the avatar choice, the theme
+    and the location rules. Everything else is excluded by *omission* rather than by a list of
+    excludes, which is why there are no <exclude> elements here — with a single <include>,
+    anything not named is already left behind, and naming a domain that was never included is
+    an error the resource compiler rejects.
+
+    The Firebase anonymous session therefore does not travel with a restore. That is
+    deliberate: it is the one thing that should be re-established on the device rather than
+    transplanted, since it is what proves who the user is. The consequence is that a restored
+    user has a new uid and is therefore no longer a member of the room whose id came back in
+    the DataStore; the app reports that as "you are no longer in this room" rather than
+    pretending the room is still reachable.
+-->
+<full-backup-content>
+    <include domain="file" path="datastore" />
+</full-backup-content>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Notification small icon.
+
+    Notification small icons are drawn as a monochrome silhouette (the system applies its own
+    tint and only the alpha channel is used), so this is a solid white mark on a transparent
+    24dp canvas. It represents a live connection: a link between two people.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+
+    <!-- The link between the two people. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9.75,10.9h4.5v2.2h-4.5z" />
+
+    <!-- Person A. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M6.6,9.4m-2.1,0a2.1,2.1 0,1 1,4.2 0a2.1,2.1 0,1 1,-4.2 0" />
+
+    <!-- Person B. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17.4,14.6m-2.1,0a2.1,2.1 0,1 1,4.2 0a2.1,2.1 0,1 1,-4.2 0" />
+</vector>

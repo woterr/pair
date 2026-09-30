@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "550010775940",
+    "project_id": "pair-4791e",
+    "storage_bucket": "pair-4791e.firebasestorage.app",
+    "firebase_url": "https://pair-4791e-default-rtdb.asia-southeast1.firebasedatabase.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:550010775940:android:82acc479ec151a723995d1",
+        "android_client_info": {
+          "package_name": "com.wood.pair"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgr5kvbUkPohQlj2VRkejfPh0JFVRRqaI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

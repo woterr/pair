@@ -1,0 +1,131 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+
+        "displayName": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+        },
+        "roomId": {
+          ".validate": "(newData.isString() && newData.val().matches(/^[A-HJ-NP-Z2-9]{6}$/)) || newData.val() === null"
+        },
+        "fcmToken": {
+          ".validate": "newData.isString() || newData.val() === null"
+        },
+
+        "$other": { ".validate": false }
+      }
+    },
+
+    "roomSlots": {
+      "$roomId": {
+        ".read": "auth != null",
+
+        ".write": "auth != null && (
+
+          (!data.exists()
+            && newData.val() === false
+            && root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid)
+
+          || (data.val() === false
+            && newData.val() === true)
+
+          || (data.val() === true
+            && newData.val() === false
+            && (root.child('rooms').child($roomId).child('member').child('uid').val() === auth.uid
+                || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))
+        )"
+      }
+    },
+
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null && (data.child('owner').child('uid').val() === auth.uid || data.child('member').child('uid').val() === auth.uid)",
+
+        ".validate": "newData.hasChildren()",
+        "$other": { ".validate": false },
+
+        "owner": {
+          "uid": {
+            ".write": "auth != null && (
+
+              (!data.exists() && newData.val() === auth.uid)
+
+              || newData.val() === root.child('rooms').child($roomId).child('member').child('uid').val()
+            )"
+          },
+
+          "name": {
+            ".write": "auth != null && (
+
+              (!data.exists() && !root.child('rooms').child($roomId).child('owner').child('uid').exists())
+
+              || data.parent().child('uid').val() === auth.uid
+
+              || newData.val() === root.child('rooms').child($roomId).child('member').child('name').val()
+            )",
+            ".validate": "newData.val() === null || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 40)"
+          }
+        },
+
+        "member": {
+          "uid": {
+            ".write": "auth != null && (
+
+              (newData.val() === auth.uid
+                && newData.val() !== root.child('rooms').child($roomId).child('owner').child('uid').val()
+                && root.child('rooms').child($roomId).child('owner').child('uid').exists()
+                && !data.exists())
+
+              || (newData.val() === null
+                && (data.val() === auth.uid
+                    || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))
+            )"
+          },
+
+          "name": {
+            ".write": "auth != null && (
+
+              root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid
+
+              || data.parent().child('uid').val() === auth.uid
+
+              || !data.parent().child('uid').exists()
+            )",
+            ".validate": "newData.val() === null || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 40)"
+          }
+        },
+
+        "live": {
+          ".write": false,
+          ".validate": "newData.hasChildren() || newData.val() === null",
+
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid && (root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid || root.child('rooms').child($roomId).child('member').child('uid').val() === auth.uid)",
+            ".validate": "newData.hasChildren() || newData.val() === null",
+            "$other": { ".validate": false },
+
+            "text": {
+              ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 500)"
+            },
+            "updatedAt": {
+              ".validate": "newData.val() === null || newData.isNumber()"
+            }
+          }
+        },
+
+        "createdAt": {
+          ".write": "auth != null && !data.exists() && newData.isNumber()",
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    "$other": { ".read": false, ".write": false }
+  }
+}

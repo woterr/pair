@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive launcher background.
+
+    A launcher background layer has to be a resolvable colour, not a Material You role, so this
+    is the one place in the app a literal colour is unavoidable. It is the mark's own ink — the
+    neutral dark the blob is drawn in — so the icon is monochrome like the rest of the brand and
+    carries no purple.
+-->
+<resources>
+    <color name="ic_launcher_background">#2B292F</color>
+</resources>

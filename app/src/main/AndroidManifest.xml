@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Firebase Realtime Database / Auth / FCM. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Live Updates. Required from Android 13 (API 33) for the notification to be shown. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+        THE permission that makes a Live Update actually become a chip.
+
+        Without this declared, the app is not eligible for promoted ongoing notifications at
+        all: `NotificationManager.canPostPromotedNotifications()` returns false, the
+        `POST_PROMOTED_NOTIFICATIONS` app op resolves to denied, and the system silently drops
+        `Notification.FLAG_PROMOTED_ONGOING` no matter how correct the notification is. There
+        is no error and no callback — the ongoing notification simply appears in the shade
+        instead of the status bar and always-on display.
+
+        It is a normal, non-dangerous permission, so declaring it is sufficient; there is no
+        runtime prompt and nothing for the user to approve.
+    -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+
+    <!--
+        Live Updates.
+
+        A promoted Live Update (the status bar / always-on display chip) must be owned by a
+        foreground service on Android 16+. The service is what makes the notification eligible
+        for promotion; posting an equivalent notification from the background is not, and the
+        system silently declines to promote it.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Geofencing. Coarse + fine are requested together; the app never asks for more. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!--
+        Background location is required for geofences to be delivered while Pair is not
+        running. On Android 10+ the system only grants it from the location settings screen,
+        so Pair sends the user there rather than asking in-context. See README.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Re-register geofences after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Wallpaper changes are user-initiated and use the normal, non-root WallpaperManager API. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <!-- Geofencing is a Play Services feature; this device must have it. -->
+    <uses-feature
+        android:name="android.hardware.location"
+        android:required="false" />
+
+    <application
+        android:name=".PairApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Pair.Starting">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale|smallestScreenSize"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Pair"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep link from a Live Update notification back into its room. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="pair"
+                    android:host="room" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Owns the ongoing Live Update notification.
+
+            It runs only while a room is actively showing live text, and it is stopped the
+            moment that ends: on leave, when membership lapses, or when the live text is
+            switched off. It is not used for anything else, and it polls nothing.
+        -->
+        <service
+            android:name=".notifications.LiveUpdateService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains the ongoing Live Update notification for an active
+                    two-person room, so the system can promote it to a status bar and
+                    always-on display chip." />
+        </service>
+
+        <!--
+            Receives remote Live Update pushes. Runs when Pair is not in the foreground,
+            which is the whole point: a Realtime Database listener alone cannot do this.
+        -->
+        <service
+            android:name=".fcm.PairMessagingService"
+            android:directBootAware="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Geofence callbacks: enter, exit, dwell, expiration. -->
+        <receiver
+            android:name=".location.GeofenceBroadcastReceiver"
+            android:exported="false" />
+
+        <!-- Re-register geofences after reboot or app update. -->
+        <receiver
+            android:name=".location.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

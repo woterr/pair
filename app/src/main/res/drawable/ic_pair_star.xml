@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The six-pointed star from the wordmark artwork, on its own.
+
+    The rule editor uses the same mark for a selected weekday, so "this one" reads the same way
+    everywhere in the app: the star means selected, exactly as it does over the "i" of the
+    wordmark. Extracted from pair.svg rather than drawn twice so the two can never drift apart.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="54.736"
+    android:viewportHeight="54.737">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M324.85 13.1476C322.819 11.1164 318.191 12.1207 312.607 15.3402C310.934 9.11464 308.372 5.1316 305.499 5.1316C302.627 5.1316 300.064 9.11439 298.392 15.3397C292.808 12.1205 288.18 11.1163 286.149 13.1474C284.118 15.1786 285.123 19.8073 288.342 25.3921C282.116 27.0643 278.132 29.6271 278.132 32.5C278.132 35.3725 282.114 37.9348 288.339 39.6071C285.119 45.1921 284.114 49.821 286.146 51.8523C288.177 53.8838 292.806 52.8789 298.392 49.6583C300.064 55.8847 302.627 59.8684 305.499 59.8684C308.372 59.8684 310.935 55.8845 312.607 49.6577C318.193 52.8786 322.822 53.8837 324.854 51.8522C326.885 49.8208 325.881 45.1921 322.661 39.6071C328.886 37.9349 332.868 35.3725 332.868 32.5C332.868 29.6271 328.884 27.0643 322.657 25.3921C325.877 19.8073 326.882 15.1788 324.85 13.1476Z" />
+</vector>
