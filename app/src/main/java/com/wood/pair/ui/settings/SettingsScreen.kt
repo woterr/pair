@@ -60,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -150,6 +151,8 @@ fun SettingsScreen(
     }
 
     var leaveDialogVisible by remember { mutableStateOf(false) }
+    var removePartnerDialogVisible by remember { mutableStateOf(false) }
+    var partnerRemovedMessageVisible by remember { mutableStateOf(false) }
 
     SettingsContent(
         state = state,
@@ -176,6 +179,13 @@ fun SettingsScreen(
                 leaveDialogVisible = true
             }
         },
+        partnerRemoved = partnerRemovedMessageVisible,
+        onPartnerRemovedShown = { partnerRemovedMessageVisible = false },
+        onRemovePartner = {
+            if (state.canRemovePartner) {
+                removePartnerDialogVisible = true
+            }
+        },
         onNavigateBack = onNavigateBack,
         onNavigateHome = onNavigateHome,
         onOpenRoom = onOpenRoom,
@@ -193,6 +203,37 @@ fun SettingsScreen(
         )
     }
 
+    if (removePartnerDialogVisible) {
+        // Confirmed, because it costs the other person their access without warning and cannot
+        // be undone from this side. Deliberately not styled as destructive-red: it is a repair,
+        // not leaving.
+        AlertDialog(
+            onDismissRequest = { removePartnerDialogVisible = false },
+            title = { Text(stringResource(R.string.settings_remove_partner_title)) },
+            text = { Text(stringResource(R.string.settings_remove_partner_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        removePartnerDialogVisible = false
+                        viewModel.removePartner {
+                            // Said plainly, because the thing the user is about to look for is
+                            // their room code, and it is not going to have changed.
+                            partnerRemovedMessageVisible = true
+                        }
+                    },
+                    enabled = !state.isRemovingPartner,
+                ) {
+                    Text(stringResource(R.string.settings_remove_partner))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { removePartnerDialogVisible = false }) {
+                    Text(stringResource(R.string.join_cancel))
+                }
+            },
+        )
+    }
+
     if (state.error != null) {
         AlertDialog(
             onDismissRequest = viewModel::dismissError,
@@ -201,6 +242,8 @@ fun SettingsScreen(
                 Text(
                     when (state.error) {
                         SettingsError.LeaveFailed -> stringResource(R.string.error_leave_failed)
+                        SettingsError.RemovePartnerFailed ->
+                            stringResource(R.string.error_remove_partner_failed)
                         SettingsError.NameRequired -> stringResource(R.string.onboarding_name_required)
                         SettingsError.NameTooLong -> stringResource(R.string.onboarding_name_too_long)
                         null -> ""
@@ -244,6 +287,9 @@ internal fun SettingsContent(
     onOpenBatterySettings: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onLeaveRoom: () -> Unit,
+    onRemovePartner: () -> Unit,
+    partnerRemoved: Boolean,
+    onPartnerRemovedShown: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateHome: () -> Unit,
     onOpenRoom: (String) -> Unit,
@@ -453,6 +499,40 @@ internal fun SettingsContent(
                     title = stringResource(R.string.settings_no_room),
                 )
             } else {
+                // Above "Leave room", because it is a repair for the room rather than a way out
+                // of it, and it is the action somebody reaches for when the connection is dead.
+                if (state.canRemovePartner) {
+                    SettingsStatusRow(
+                        title = stringResource(R.string.settings_remove_partner),
+                        status = null,
+                        trailing = {
+                            TextButton(
+                                onClick = onRemovePartner,
+                                enabled = !state.isRemovingPartner,
+                            ) {
+                                Text(stringResource(R.string.settings_remove_partner))
+                            }
+                        },
+                    )
+
+                    Spacer(Modifier.size(8.dp))
+                }
+
+                // A confirmation rather than a dialog: the removal is already done and the user
+                // is still on this screen, so the one thing worth saying is the bit they are
+                // about to go looking for.
+                if (partnerRemoved) {
+                    LaunchedEffect(Unit) {
+                        delay(4_000)
+                        onPartnerRemovedShown()
+                    }
+                    SettingsStatusRow(
+                        title = stringResource(R.string.settings_partner_removed),
+                    )
+
+                    Spacer(Modifier.size(8.dp))
+                }
+
                 SettingsStatusRow(
                     title = stringResource(R.string.settings_leave_room),
                     status = null,

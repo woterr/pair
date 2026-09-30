@@ -69,13 +69,26 @@ no matter what the rules say. The app working proved nothing, because the app wo
 
 ```bash
 firebase emulators:start --only database
-cd database-rules-test && npm install && npm test
+cd database-rules-test && npm install
+node database.rules.test.mjs
+node app-writes.test.mjs
 ```
 
-25 assertions, each security property paired with its "must be refused" counterpart —
-a member cannot publish a status under their partner's key, a stranger cannot read a room
-or join it, a token cannot be rewritten by anyone else. Run against the emulator, which
-loads the real rules file, so what passes is what is deployed.
+Two suites, because they ask different questions and only one of them is the one that
+matters:
+
+| | |
+|---|---|
+| `database.rules.test.mjs` | *Is the rule right?* 25 assertions, each security property paired with its "must be refused" counterpart. |
+| `app-writes.test.mjs` | *Does the rule let the app work?* 24 assertions, derived from `RoomRepository` rather than from the rules. |
+
+The second exists because the first was not enough, and the way it was not enough is worth
+recording. It tested `rooms/{roomId}/owner/uid`; the app creates a room with a single
+`rooms/{roomId}.setValue({owner, createdAt})`, a write **at** the room node. Firebase only
+honours a `.write` rule at the write location or an ancestor, never below it, so every
+creation-path assertion passed while the creation path had never been executed at all. It
+broke the moment the rules were deployed. Assert against what the code does, not against what
+you believe it does.
 
 ---
 

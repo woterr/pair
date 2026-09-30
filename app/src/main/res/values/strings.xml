@@ -153,6 +153,18 @@
     <string name="error_create_failed">Could not create a room.</string>
     <string name="error_join_failed">Could not join the room.</string>
     <string name="error_leave_failed">Could not leave the room cleanly.</string>
+    <string name="error_remove_partner_failed">Could not remove your partner from the room.</string>
+
+    <!--
+        Removing a partner. Offered only to the owner of a room that still lists one, and only
+        because a partner who has uninstalled the app leaves their slot taken forever otherwise.
+    -->
+    <string name="settings_remove_partner">Remove partner</string>
+    <string name="settings_remove_partner_title">Remove your partner?</string>
+    <string name="settings_remove_partner_body">They will be removed from this room and the code
+        will stay yours, so you can share it with somebody else. If they are still there, they
+        will see the room go quiet until they are added again.</string>
+    <string name="settings_partner_removed">Partner removed. Your room code has not changed.</string>
     <string name="error_wallpaper_failed">Could not set the wallpaper.</string>
     <string name="error_notifications_blocked">Notifications are blocked for Pair.</string>
 

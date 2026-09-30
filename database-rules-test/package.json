@@ -2,10 +2,12 @@
   "name": "pair-database-rules-test",
   "version": "1.0.0",
   "private": true,
-  "description": "Asserts the Realtime Database rules against the paths Pair depends on",
+  "description": "Asserts the Realtime Database rules, and the writes Pair actually makes",
   "type": "module",
   "scripts": {
-    "test": "node database.rules.test.mjs"
+    "test": "node database.rules.test.mjs && node app-writes.test.mjs",
+    "test:rules": "node database.rules.test.mjs",
+    "test:app-writes": "node app-writes.test.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

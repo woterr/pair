@@ -267,6 +267,66 @@ class RoomRepository(
     // ---------------------------------------------------------------- leave
 
     /**
+     * Removes the partner from this room, for the owner.
+     *
+     * ## Why this exists
+     *
+     * A partner who uninstalls the app leaves their uid recorded in the room forever. Nothing
+     * in the schema can tell a departed member from one who is merely quiet, so the slot stays
+     * taken: every joiner is told the room is full, and the owner is locked into a connection
+     * with somebody who can never answer. For an app whose entire premise is two people in a
+     * room, that is a dead end with no way out of it from inside the app.
+     *
+     * Only the owner can do this, which is the point. Ownership is the only claim on a room the
+     * rules can still verify when the other person is gone — the departed member is precisely
+     * the person who can no longer authorise anything, including their own removal.
+     *
+     * The room id is deliberately kept. The point is to be able to invite somebody else, not
+     * to start again.
+     */
+    suspend fun removePartner(uid: String, roomId: String): RoomResult<Unit> =
+        firebaseWithTimeout(what = "partner removal") {
+            val snapshot = roomRef(roomId).snapshotFlow().firstSnapshotOrNull()
+                ?: return@firebaseWithTimeout RoomResult.Failure(RoomError.NotFound)
+
+            val ownerUid = snapshot.childStringOrNull(Paths.OWNER, Paths.UID)
+            if (ownerUid != uid) {
+                // Not ours to empty. A member asking to be removed is just leaving.
+                return@firebaseWithTimeout RoomResult.Failure(RoomError.NotAMember)
+            }
+
+            val memberUid = snapshot.childStringOrNull(Paths.MEMBER, Paths.UID)
+            if (memberUid == null) {
+                // Already empty. Reported as success so a second tap is not an error.
+                return@firebaseWithTimeout RoomResult.Success(Unit)
+            }
+
+            val removed = runCatching {
+                roomRef(roomId).updateChildren(mapOf(Paths.MEMBER to null)).await()
+            }.isSuccess
+
+            if (!removed) {
+                return@firebaseWithTimeout RoomResult.Failure(
+                    RoomError.Unknown("Could not remove the partner from room $roomId"),
+                )
+            }
+
+            // Freed after the member node is cleared, and permitted because the caller is the
+            // owner: the rules allow an owner to open the hint, which is what lets somebody
+            // else join. Clearing it before would work too, but this order leaves the room
+            // briefly looking full rather than briefly looking joinable, and the first is the
+            // safe direction to be wrong in.
+            slotRef(roomId).setValue(false).awaitQuietly()
+
+            // The departed member's own record still points at this room, which is what makes
+            // their device try to rejoin on next launch. It is a courtesy: the rules do not
+            // require it, and the write is best-effort so a failure cannot fail the removal.
+            userRef(memberUid).child("roomId").setValue(null).awaitQuietly()
+
+            RoomResult.Success(Unit)
+        }
+
+    /**
      * Leaves the current room.
      *
      * - A member leaving frees the slot, so the room can be joined again.
@@ -311,11 +371,20 @@ class RoomRepository(
                     }
 
                     else -> {
+                        // The slot is freed *before* the member node is removed, and the order
+                        // is load-bearing rather than incidental.
+                        //
+                        // The rules only let a member release the slot hint while they are
+                        // still recorded in the room — that is what stops anybody walking up
+                        // to an arbitrary room and flipping its public hint. Clear the member
+                        // first and the release is no longer authorisable, because by then
+                        // there is no member left to prove who is asking. The room then keeps a
+                        // `true` hint forever, every joiner is told it is full, and a room
+                        // that is genuinely empty can never be joined again.
+                        slotRef(roomId).setValue(false).awaitQuietly()
                         roomRef(roomId).updateChildren(
                             mapOf(Paths.MEMBER to null),
                         ).await()
-                        // Freeing the slot is permitted only for the recorded member.
-                        slotRef(roomId).setValue(false).awaitQuietly()
                     }
                 }
             }.isSuccess

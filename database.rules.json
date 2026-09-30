@@ -34,7 +34,8 @@
       "$roomId": {
         ".read": "auth != null && (data.child('owner').child('uid').val() === auth.uid || data.child('member').child('uid').val() === auth.uid)",
 
-        ".validate": "newData.hasChildren()",
+        ".write": "auth != null && (\n\n          (!data.exists()\n            && newData.hasChildren()\n            && newData.child('owner').child('uid').val() === auth.uid)\n\n          || (newData.val() === null\n            && data.exists()\n            && data.child('owner').child('uid').val() === auth.uid)\n\n          || (data.exists()\n            && newData.hasChildren()\n            && data.child('owner').child('uid').val() === auth.uid\n            && newData.child('live').val() === data.child('live').val())\n        )",
+        ".validate": "!newData.exists() || newData.hasChildren()",
         "$other": { ".validate": false },
 
         "owner": {
@@ -49,8 +50,11 @@
         },
 
         "member": {
+          ".write": "auth != null && ((newData.hasChildren() && !data.exists() && newData.child('uid').val() === auth.uid && data.parent().child('owner').child('uid').val() !== auth.uid) || (newData.val() === null && (data.child('uid').val() === auth.uid || data.parent().child('owner').child('uid').val() === auth.uid)))",
+
           "uid": {
-            ".write": "auth != null && (\n\n              (newData.val() === auth.uid\n                && newData.val() !== root.child('rooms').child($roomId).child('owner').child('uid').val()\n                && root.child('rooms').child($roomId).child('owner').child('uid').exists()\n                && !data.exists())\n\n              || (newData.val() === null\n                && (data.val() === auth.uid\n                    || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))\n            )"
+            ".write": "auth != null && (\n\n              (newData.val() === auth.uid\n                && newData.val() !== root.child('rooms').child($roomId).child('owner').child('uid').val()\n                && root.child('rooms').child($roomId).child('owner').child('uid').exists()\n                && !data.exists())\n\n              || (newData.val() === null\n                && (data.val() === auth.uid\n                    || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))\n            )",
+            ".validate": "newData.val() === null || (newData.isString() && newData.val() !== root.child('rooms').child($roomId).child('owner').child('uid').val())"
           },
 
           "name": {
