@@ -44,17 +44,52 @@ export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 
 ---
 
-## Before it works against a real database
+## The Realtime Database is secured
 
-**The Realtime Database is in public test mode.** `database.rules.json` is written and correct,
-but it has not been deployed, which means anyone who knows the URL can currently read and write
-every room. Deploy it before anything else:
+The rules are deployed. An unauthenticated read or write of any part of the tree now returns
+`401`, verified from a plain `curl` against the live instance:
 
 ```bash
-firebase deploy --only database
+curl -s -o /dev/null -w "%{http_code}\n" \
+  "https://pair-4791e-default-rtdb.asia-southeast1.firebasedatabase.app/.json"
 ```
 
-Then verify from a client that an unauthenticated read is refused.
+Two things are worth knowing about how that state was reached.
+
+**The rules file was not valid JSON.** The rule expressions are written across several
+lines for legibility, and the newlines inside those quoted strings were raw control
+characters. Firebase's own parser is lenient and reads it; a strict JSON parser does not.
+The file has been escaped, which changes no rule — the parsed rule tree is identical
+character for character — and it now parses strictly.
+
+**The rules were never enforced anywhere before this, so nothing about them had actually
+been tested.** The database was in public test mode, where every read and write succeeds
+no matter what the rules say. The app working proved nothing, because the app worked
+*because* nothing was being checked. `database-rules-test/` is what closes that gap:
+
+```bash
+firebase emulators:start --only database
+cd database-rules-test && npm install && npm test
+```
+
+25 assertions, each security property paired with its "must be refused" counterpart —
+a member cannot publish a status under their partner's key, a stranger cannot read a room
+or join it, a token cannot be rewritten by anyone else. Run against the emulator, which
+loads the real rules file, so what passes is what is deployed.
+
+---
+
+## The Cloud Function is written but not deployed
+
+`functions/src/index.ts` pushes a status to the partner's device over FCM, which is what
+lets the Live Update change while the app is closed. **It is not deployed, and it cannot
+be on the current project plan.** `pair-4791e` has `billingEnabled: false` — the Spark
+plan — and Cloud Functions, Cloud Run, Eventarc, Cloud Build and Artifact Registry all
+require the Blaze plan. The APIs are disabled, so `firebase deploy --only functions`
+fails with `SERVICE_DISABLED`.
+
+Until that changes, the chip updates through the in-app database listener only, which is
+alive while the app is in the foreground.
 
 ---
 

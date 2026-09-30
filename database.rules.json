@@ -26,20 +26,7 @@
       "$roomId": {
         ".read": "auth != null",
 
-        ".write": "auth != null && (
-
-          (!data.exists()
-            && newData.val() === false
-            && root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid)
-
-          || (data.val() === false
-            && newData.val() === true)
-
-          || (data.val() === true
-            && newData.val() === false
-            && (root.child('rooms').child($roomId).child('member').child('uid').val() === auth.uid
-                || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))
-        )"
+        ".write": "auth != null && (\n\n          (!data.exists()\n            && newData.val() === false\n            && root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid)\n\n          || (data.val() === false\n            && newData.val() === true)\n\n          || (data.val() === true\n            && newData.val() === false\n            && (root.child('rooms').child($roomId).child('member').child('uid').val() === auth.uid\n                || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))\n        )"
       }
     },
 
@@ -52,51 +39,22 @@
 
         "owner": {
           "uid": {
-            ".write": "auth != null && (
-
-              (!data.exists() && newData.val() === auth.uid)
-
-              || newData.val() === root.child('rooms').child($roomId).child('member').child('uid').val()
-            )"
+            ".write": "auth != null && (\n\n              (!data.exists() && newData.val() === auth.uid)\n\n              || newData.val() === root.child('rooms').child($roomId).child('member').child('uid').val()\n            )"
           },
 
           "name": {
-            ".write": "auth != null && (
-
-              (!data.exists() && !root.child('rooms').child($roomId).child('owner').child('uid').exists())
-
-              || data.parent().child('uid').val() === auth.uid
-
-              || newData.val() === root.child('rooms').child($roomId).child('member').child('name').val()
-            )",
+            ".write": "auth != null && (\n\n              (!data.exists() && !root.child('rooms').child($roomId).child('owner').child('uid').exists())\n\n              || data.parent().child('uid').val() === auth.uid\n\n              || newData.val() === root.child('rooms').child($roomId).child('member').child('name').val()\n            )",
             ".validate": "newData.val() === null || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 40)"
           }
         },
 
         "member": {
           "uid": {
-            ".write": "auth != null && (
-
-              (newData.val() === auth.uid
-                && newData.val() !== root.child('rooms').child($roomId).child('owner').child('uid').val()
-                && root.child('rooms').child($roomId).child('owner').child('uid').exists()
-                && !data.exists())
-
-              || (newData.val() === null
-                && (data.val() === auth.uid
-                    || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))
-            )"
+            ".write": "auth != null && (\n\n              (newData.val() === auth.uid\n                && newData.val() !== root.child('rooms').child($roomId).child('owner').child('uid').val()\n                && root.child('rooms').child($roomId).child('owner').child('uid').exists()\n                && !data.exists())\n\n              || (newData.val() === null\n                && (data.val() === auth.uid\n                    || root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid))\n            )"
           },
 
           "name": {
-            ".write": "auth != null && (
-
-              root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid
-
-              || data.parent().child('uid').val() === auth.uid
-
-              || !data.parent().child('uid').exists()
-            )",
+            ".write": "auth != null && (\n\n              root.child('rooms').child($roomId).child('owner').child('uid').val() === auth.uid\n\n              || data.parent().child('uid').val() === auth.uid\n\n              || !data.parent().child('uid').exists()\n            )",
             ".validate": "newData.val() === null || (newData.isString() && newData.val().length >= 1 && newData.val().length <= 40)"
           }
         },
