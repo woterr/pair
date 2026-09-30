@@ -213,11 +213,38 @@ The screens are rendered on `BaselinePalette` in the test source set: the palett
 actually drawn on, sampled from the frames. It is a test fixture and never referenced by the app,
 which has no brand colour.
 
+## Releasing, and why an update is an update
+
+A build installs *over* an existing one only if the package name and the signing certificate both
+match. Miss either and the installer refuses, and the only way forward is to uninstall — which
+deletes the app's data with it: the room, the display name, the avatar, the appearance settings.
+Two things therefore have to hold, and both used to be wrong:
+
+**A real, kept signing key.** The release build had no signing configuration at all, so every
+release APK was signed with a throwaway debug key that is regenerated on each build. To the
+installer, consecutive releases were two unrelated apps. That is the uninstall.
+
+Signing is configured from `keystore.properties`, which is gitignored because it holds a
+password; `keystore.properties.example` is the committed template and explains how to generate
+one. Without that file the release build produces an **unsigned** APK, which cannot be installed
+at all — a loud failure, deliberately, rather than an APK that quietly carries a different
+identity.
+
+**A rising version code.** Android refuses an install whose `versionCode` is not higher than the
+installed one, reporting `INSTALL_FAILED_VERSION_DOWNGRADE`, which says nothing about the real
+cause. It is now 2.
+
+If a build is already on a device signed with a different key, that one device cannot be updated
+in place and needs a single uninstall. Every build after the first properly-signed one installs
+cleanly. The data lost is local only — the room lives in the Realtime Database and is reached
+again through the same anonymous account.
+
 ### Unit tests
 
-`RoomId`, `TimeWindow`, `LocationRule`, `Room`'s membership rules, `LiveTexts` and
-`decideLiveUpdate` — the pure logic, where a mistake is silent and a wrong answer is a user's lost
-room. 56 tests, plus 25 rules assertions in `database-rules-test/`.
+`RoomId`, `TimeWindow`, `LocationRule`, `Room`'s membership rules, `LiveTexts`,
+`decideLiveUpdate` and the chip-emphasis boundary — the pure logic, where a mistake is silent and
+a wrong answer is a user's lost room. 69 tests, plus 49 rules assertions in
+`database-rules-test/`.
 
 Two of them found real bugs while being written, both now fixed: a `TimeWindow` whose end equalled
 its start matched *every* minute of the day, and a card painted with `primaryContainer` was

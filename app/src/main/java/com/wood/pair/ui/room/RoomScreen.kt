@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wood.pair.R
 import com.wood.pair.data.PairGraph
+import com.wood.pair.notifications.ChipEmphasisTransformation
 import com.wood.pair.ui.components.Avatars
 import com.wood.pair.ui.components.PairDestination
 import com.wood.pair.ui.components.PairScaffold
@@ -829,6 +830,11 @@ private fun LiveTextField(
                 cursorColor = MaterialTheme.colorScheme.primary,
             ),
             shape = MaterialTheme.pairShapes.card,
+            // The characters the Live Update chip will carry are drawn emphatic, so the field
+            // says plainly which part of a long status survives to the one surface it is read
+            // on. A visual transformation rather than a second piece of state: the value is
+            // untouched, so the cursor, selection and IME all behave as they normally would.
+            visualTransformation = ChipEmphasisTransformation,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
             ),

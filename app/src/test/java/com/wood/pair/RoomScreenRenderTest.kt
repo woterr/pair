@@ -57,6 +57,20 @@ class RoomScreenRenderTest : ScreenRenderTest() {
     fun roomLive() = render("room-live", SampleState.roomLive)
 
     /**
+     * A status long enough to overflow the chip, which is the only state that shows the
+     * emphasis boundary.
+     *
+     * Every other sample uses "Going to…", which fits the chip entirely and therefore marks
+     * every character — true, and useless as evidence. This is the state the feature exists
+     * for, and the render is what shows whether the weight change lands where the comp has it.
+     */
+    @Test
+    fun roomLongStatusShowsChipBoundary() = render(
+        "room-chip-boundary",
+        SampleState.roomLive.copy(draft = "Headed to baker's street"),
+    )
+
+    /**
      * Just after pressing "Set status": the confirmation chip is up and the button is disabled.
      *
      * The pair is the point. The chip says the status went out and the button is now inert because
