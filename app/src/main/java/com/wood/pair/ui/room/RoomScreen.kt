@@ -90,6 +90,7 @@ import com.wood.pair.ui.rememberPairViewModel
 import kotlinx.coroutines.launch
 import com.wood.pair.ui.shape.IndeterminateCircular
 import com.wood.pair.ui.shape.IndeterminateWave
+import com.wood.pair.ui.shape.WaveUnderline
 import com.wood.pair.ui.theme.MotionScheme
 import com.wood.pair.ui.theme.PairSurfaces
 import com.wood.pair.ui.theme.Space
@@ -873,6 +874,10 @@ private fun LiveTextField(
         // decoration, and the field's own text is not ours to lay out. The width is measured with
         // the field's own text style so the rule tracks the text exactly — at any font scale, and
         // whether the chip carries six characters or seven.
+        //
+        // [WaveUnderline] rather than the animated [IndeterminateWave]: that one's "frozen" mode
+        // leaves each of its segments at a different height, which under a 34sp word reads as
+        // broken marks rather than a rule. This is one continuous sine.
         if (emphasised != null) {
             val style = MaterialTheme.pairTypography.liveText
             val measurer = rememberTextMeasurer()
@@ -893,10 +898,9 @@ private fun LiveTextField(
                     .padding(start = FIELD_TEXT_INSET, top = FIELD_TEXT_TOP_INSET)
                     .padding(top = style.lineHeight.value.dp * 0.97f),
             ) {
-                IndeterminateWave(
+                WaveUnderline(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     width = ruleWidth,
-                    animated = false,
                 )
             }
         }
