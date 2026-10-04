@@ -77,6 +77,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wood.pair.R
 import com.wood.pair.data.PairGraph
@@ -774,7 +775,23 @@ private fun PauseGlyph(
  * The focus callback exists so the room knows when someone is mid-edit — that is what lets the
  * pending-write indicator appear, and what stops an incoming change from yanking the field out
  * from under a person who is typing in it.
+ *
+ * The chip's characters are marked twice over: heavier, and underlined with a frozen wave. Weight
+ * alone proved too weak a signal — the field is already Bold, so "heavier" is a difference
+ * noticed on inspection rather than on a glance, and a glance is the only read this gets.
  */
+/** The field's own horizontal text inset — the platform's content padding for this text field. */
+private val FIELD_TEXT_INSET = 16.dp
+
+/**
+ * Where the first line of the field's text begins, measured down from the top of the field.
+ *
+ * The wave is drawn in the Box *around* the field rather than inside it, so it has to know where
+ * the text starts. That offset is the field's vertical content padding, which the platform derives
+ * from the text style rather than exposing, so it is pinned here and checked against a render.
+ */
+private val FIELD_TEXT_TOP_INSET = 12.dp
+
 @Composable
 private fun LiveTextField(
     state: RoomUiState,
@@ -783,6 +800,9 @@ private fun LiveTextField(
 ) {
     val motion = MaterialTheme.pairMotion
     val value = state.draft
+    // Null when the chip will carry nothing — an empty field — so the placeholder is never
+    // marked as though part of it were going to survive.
+    val emphasised = remember(value) { ChipEmphasisTransformation.emphasisedRange(value) }
     val description = if (value.isBlank()) {
         stringResource(R.string.cd_live_text_empty)
     } else {
@@ -839,6 +859,47 @@ private fun LiveTextField(
                 capitalization = KeyboardCapitalization.Sentences,
             ),
         )
+
+        // The wavy rule under the chip's characters.
+        //
+        // Weight alone turned out to be a weak signal: the field is already Bold, so
+        // "heavier" is a subtle difference at a glance, and on a glance is the only read this
+        // ever gets. The wave is the part that actually says "this, and no further" — and it is
+        // the same shape the partner line already uses to mark itself, so it reads as Pair's
+        // vocabulary rather than a spell-check squiggle. It is drawn frozen, like that one: a
+        // travelling wave under a word would be motion that never resolves.
+        //
+        // Drawn as a sibling rather than inside the field because `TextStyle` has no wavy
+        // decoration, and the field's own text is not ours to lay out. The width is measured with
+        // the field's own text style so the rule tracks the text exactly — at any font scale, and
+        // whether the chip carries six characters or seven.
+        if (emphasised != null) {
+            val style = MaterialTheme.pairTypography.liveText
+            val measurer = rememberTextMeasurer()
+            val ruleWidth = with(LocalDensity.current) {
+                measurer.measure(
+                    text = value.substring(emphasised.first, emphasised.last + 1),
+                    style = style,
+                    density = this,
+                ).size.width.toDp()
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    // The field's own text insets. Horizontal is the platform's 16dp content
+                    // padding; vertical is that plus the first line's height, which puts the wave
+                    // in the first line's descender space rather than under the second line.
+                    .padding(start = FIELD_TEXT_INSET, top = FIELD_TEXT_TOP_INSET)
+                    .padding(top = style.lineHeight.value.dp * 0.97f),
+            ) {
+                IndeterminateWave(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    width = ruleWidth,
+                    animated = false,
+                )
+            }
+        }
     }
 
     // Only while the room is live. When it is paused the indicator already says that nothing is

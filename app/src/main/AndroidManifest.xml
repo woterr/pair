@@ -109,6 +109,28 @@
         </service>
 
         <!--
+            "Set your status" without opening the app, opened by tapping the Live Update.
+
+            A promoted Live Update is drawn from the platform's own template, and that template
+            does not render inline text-entry actions - verified on device: the notification
+            builds with the reply action attached (the app logs "2 action(s), 1 with an inline
+            text field") and it appears only when Live Updates are switched off. The chip is the
+            product, so the chip wins, and this is how a status gets set from the notification
+            anyway.
+
+            Theme.Pair is transparent and action-bar-less, which is what makes this a small sheet
+            over the current screen rather than an app launch. singleTop because the notification
+            can be tapped repeatedly and each tap should amend this sheet, not stack another
+            behind it. noHistory so dismissing it leaves nothing behind.
+        -->
+        <activity
+            android:name=".notifications.QuickStatusActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@style/Theme.Pair" />
+
+        <!--
             Receives remote Live Update pushes. Runs when Pair is not in the foreground,
             which is the whole point: a Realtime Database listener alone cannot do this.
         -->

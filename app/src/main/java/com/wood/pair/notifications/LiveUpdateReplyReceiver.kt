@@ -5,14 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.wood.pair.PairApplication
-import com.wood.pair.core.launchSafely
 import com.wood.pair.data.model.LiveTexts
 import com.wood.pair.data.model.RoomId
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 /**
  * Handles a status typed straight into the Live Update.
@@ -69,48 +63,21 @@ class LiveUpdateReplyReceiver : BroadcastReceiver() {
             Log.i(TAG, "Empty reply; withdrawing the status for $roomId")
         }
 
-        val app = context.applicationContext as? PairApplication ?: return
-        val graph = app.graph
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val scope = StatusSubmitter.transientScope()
 
         // A BroadcastReceiver is killed as soon as onReceive returns, so the work is held open
         // deliberately. Ten seconds is the platform's own limit for a broadcast.
         val pending = goAsync()
 
-        scope.launchSafely("live update reply") {
-            try {
-                val uid = graph.authRepository.currentUidOrNull()
-                if (uid == null) {
-                    // No session. The anonymous sign-in is in flight or has been lost, and
-                    // writing under a null uid is not possible. The chip is left alone rather than
-                    // posting something the room does not agree with.
-                    Log.w(TAG, "No signed-in identity; ignoring the reply")
-                    return@launchSafely
-                }
-
-                if (graph.preferences.currentRoomIdOrNull() != roomId) {
-                    // The reply names a room this device is no longer in - it left, or was
-                    // removed. Writing anyway would create a status under a uid that is not a
-                    // member, which the database rules reject and which is not this user's to do.
-                    Log.w(TAG, "Not currently in $roomId; ignoring the reply")
-                    return@launchSafely
-                }
-
-                graph.roomRepository.setLiveText(uid, roomId, text)
-
-                // Re-derive this device's own chip from the room. The write above only changed
-                // *our* status; what belongs in our Live Update is the partner's, and that is
-                // unchanged unless there is no partner and the rule is loopback.
-                val room = graph.roomRepository.readRoomOnce(roomId, uid)
-                val partnerUid = room?.partnerOf(uid)
-                val shown = room?.live?.forViewer(viewerUid = uid, partnerUid = partnerUid).orEmpty()
-                LiveUpdateService.show(context, roomId, shown)
-
-                Log.i(TAG, "Status sent to $roomId from the notification")
-            } finally {
-                pending.finish()
-            }
-        }
+        // The write itself is [StatusSubmitter]'s, shared with the sheet the notification body
+        // opens. Two entry points to one rule: kept here so they cannot drift apart.
+        StatusSubmitter.submit(
+            context = context,
+            roomId = roomId,
+            text = text,
+            scope = scope,
+            onDone = { pending.finish() },
+        )
     }
 
     companion object {

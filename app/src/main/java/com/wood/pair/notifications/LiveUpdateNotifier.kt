@@ -44,6 +44,13 @@ object LiveUpdateNotifier {
     const val CHANNEL_ID: String = "pair_live_update"
 
     /**
+     * Action for the body tap's intent, distinct from anything else that targets the same
+     * component — [PendingIntent] equality ignores extras, so two intents that share a component
+     * and differ only by room would otherwise resolve to the same one.
+     */
+    private const val ACTION_QUICK_STATUS = "com.wood.pair.action.QUICK_STATUS"
+
+    /**
      * Maximum characters handed to the compact chip, per the platform's documented guidance
      * for `setShortCriticalText`.
      */
@@ -228,7 +235,16 @@ object LiveUpdateNotifier {
             // field is one tap away via the action, and the app opens. Forcing it to expand
             // would mean a translucent Activity that grabs focus, which is worse on every other
             // interaction.
-            .setContentIntent(deepLink(context, roomId))
+            // The body tap opens the small "set your status" sheet, not the room.
+            //
+            // This was the original request — change the status from the notification rather than
+            // opening the app — and it could not be delivered by the inline action alone: a
+            // promoted Live Update is drawn from the platform's template, which does not render
+            // text-entry actions. So the tap goes somewhere that can.
+            //
+            // `deleteIntent` stays a deep link into the room: that is the platform telling us the
+            // user dismissed the update, and there is nothing to set a status about by then.
+            .setContentIntent(quickStatus(context, roomId))
             .setDeleteIntent(deepLink(context, roomId))
             .addAction(replyAction(context, roomId))
             .addAction(openAction(context, roomId))
@@ -243,18 +259,23 @@ object LiveUpdateNotifier {
 
         val built = builder.build()
 
-        // What the notification actually carries, not what was intended.
+        // What the notification carries, not what was intended.
         //
         // A `RemoteInput` action can be attached here and still never reach the screen: the
-        // platform renders a promoted Live Update from a curated action set, and it declines to
-        // show an inline reply on the lock screen. Without this line the two cases are
-        // indistinguishable from outside — "the field is not there" looks the same whether the
-        // action was never built or the platform dropped it.
+        // platform renders a promoted Live Update from its own template, and it does not show an
+        // inline reply on the lock screen. Without this line the two cases are indistinguishable
+        // from outside — "the field is not there" looks the same whether the action was never
+        // built or the platform declined to render it.
+        //
+        // Deliberately does NOT report FLAG_PROMOTED_ONGOING. That flag is set by the *system*
+        // after posting, so reading it off a notification that was just built is always false
+        // and says nothing at all. An earlier version of this line printed it and was
+        // confidently wrong in both directions: `promoted=false` on a Live Update that was
+        // promoted and on one that was not.
         val inline = built.actions.count { it.remoteInputs?.isNotEmpty() == true }
         Log.i(
             TAG,
-            "Built Live Update: ${built.actions.size} action(s), $inline with an inline text " +
-                "field; promoted=${built.flags and android.app.Notification.FLAG_PROMOTED_ONGOING != 0}",
+            "Built Live Update: ${built.actions.size} action(s), $inline with an inline text field",
         )
 
         return built
@@ -282,6 +303,28 @@ object LiveUpdateNotifier {
         if (collapsed.isEmpty()) return "—"
         if (collapsed.length <= MAX_SHORT_TEXT_CHARS) return collapsed
         return collapsed.take(MAX_SHORT_TEXT_CHARS).trimEnd()
+    }
+
+    /**
+     * Opens the "set your status" sheet from the notification body.
+     *
+     * Immutable, unlike the reply action's intent: nothing needs to fill this one in, and an
+     * immutable PendingIntent is the safer default wherever it will do.
+     */
+    private fun quickStatus(context: Context, roomId: String): PendingIntent {
+        val intent = Intent(context, QuickStatusActivity::class.java).apply {
+            putExtra(QuickStatusActivity.EXTRA_ROOM_ID, roomId)
+            // A distinct action so this PendingIntent can never be confused with another intent
+            // to the same component carrying a different room.
+            action = ACTION_QUICK_STATUS
+            data = Uri.parse("pair://quick-status/$roomId")
+        }
+        return PendingIntent.getActivity(
+            context,
+            notificationId(roomId) * 31 + 5,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun deepLink(context: Context, roomId: String): PendingIntent {
