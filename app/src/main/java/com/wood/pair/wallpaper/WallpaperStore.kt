@@ -95,7 +95,7 @@ class WallpaperStore(context: Context) {
                 ?: return@runCatching WallpaperResult.Rejected("The image could not be read")
             val manager = android.app.WallpaperManager.getInstance(appContext)
             manager.setBitmap(
-                cropToWallpaperAspect(bitmap, wallpaperSize(manager, target)),
+                prepareForSurface(bitmap),
                 null,
                 true,
                 target.flags,
@@ -117,67 +117,32 @@ class WallpaperStore(context: Context) {
         apply(reference, WallpaperTarget.Home)
 
     /**
-     * The pixel size the target surface actually wants.
+     * Returns [bitmap] untouched.
      *
-     * Home and lock wallpapers are not the same size on any phone - the lock one is taller,
-     * because it has to clear the clock and the shortcut row - so a single hard-coded size would
-     * be wrong for one of them on every device.
+     * ## Why there is no crop here any more
      *
-     * [WallpaperManager.getDesiredMinimumWidth] / `Height` are the system's own advice for the
-     * surface being set. They are zero on some builds, so the display size is the fallback rather
-     * than the answer.
+     * This used to centre-crop the image to the surface's aspect ratio, on the reasoning that
+     * "fill this surface, never distort it" means throw away the overflow. The reasoning was
+     * sound and the outcome was the opposite of what it promised, because it cropped to the wrong
+     * ratio — see [wallpaperSize] — and the system then scaled what survived into the real one.
+     * The user saw an image "stretched and zoomed into": the zoom was this crop, and the stretch
+     * was the system correcting the mismatch.
+     *
+     * Cropping is also the wrong tool for the request. "Not stretched" and "not zoomed" cannot
+     * both be achieved by cropping, because cropping *is* zooming: on a portrait photo and a tall
+     * screen, filling the frame by discarding overflow throws away most of the picture. The only
+     * way to honour both is to hand over an image that has not been distorted or cropped at all
+     * and let the platform decide how to fit it.
+     *
+     * So the image goes across at its own aspect ratio, and the system applies its own scaling.
+     * That is the one party here with real knowledge of the surface, and it is the only place
+     * where "how should this image fill this particular screen" can be answered correctly.
+     *
+     * The honest limit: whether the platform's own fit produces bars rather than a full bleed is
+     * the platform's decision and varies by build and by launcher. What Pair can guarantee is
+     * that it is not the thing distorting the image.
      */
-    private fun wallpaperSize(
-        manager: android.app.WallpaperManager,
-        target: WallpaperTarget,
-    ): Pair<Int, Int> {
-        val width = manager.desiredMinimumWidth
-        val height = manager.desiredMinimumHeight
-        if (width > 0 && height > 0) return width to height
-        val metrics = appContext.resources.displayMetrics
-        return metrics.widthPixels to metrics.heightPixels
-    }
-
-    /**
-     * Centre-crops [bitmap] to [target]'s aspect ratio.
-     *
-     * ## Why the crop is done here rather than left to the system
-     *
-     * `WallpaperManager.setBitmap` scales the image to cover the surface, and on a mismatch
-     * between the image's aspect and the surface's, "cover" is either a stretch or a letterbox
-     * depending on the build. Both were reported: a portrait photo on a tall lock screen came out
-     * squeezed, and a wide photo on the same screen came out with black bars down the sides.
-     *
-     * Neither is a defect of the image. The only correct answer for "fill this surface" is to
-     * keep the image's proportions and throw away the overflow, and the only place that can be
-     * decided with knowledge of *this* device's surface is here. The result is exactly
-     * `ContentScale.Crop`: no distortion, and no gaps, because the crop fills the frame by
-     * construction.
-     *
-     * Returns the original bitmap untouched when its aspect already matches, so the common case
-     * costs nothing and the common case is the one that is already right.
-     */
-    private fun cropToWallpaperAspect(bitmap: Bitmap, target: Pair<Int, Int>): Bitmap {
-        val (targetWidth, targetHeight) = target
-        if (targetWidth <= 0 || targetHeight <= 0) return bitmap
-        if (bitmap.width <= 0 || bitmap.height <= 0) return bitmap
-
-        val sourceRatio = bitmap.width.toFloat() / bitmap.height
-        val targetRatio = targetWidth.toFloat() / targetHeight
-        if (kotlin.math.abs(sourceRatio - targetRatio) < ASPECT_TOLERANCE) return bitmap
-
-        return if (sourceRatio > targetRatio) {
-            // Too wide: keep full height, take a narrower slice from the middle.
-            val cropWidth = (bitmap.height * targetRatio).toInt().coerceIn(1, bitmap.width)
-            val left = (bitmap.width - cropWidth) / 2
-            Bitmap.createBitmap(bitmap, left, 0, cropWidth, bitmap.height)
-        } else {
-            // Too tall: keep full width, take a shorter slice from the middle.
-            val cropHeight = (bitmap.width / targetRatio).toInt().coerceIn(1, bitmap.height)
-            val top = (bitmap.height - cropHeight) / 2
-            Bitmap.createBitmap(bitmap, 0, top, bitmap.width, cropHeight)
-        }
-    }
+    private fun prepareForSurface(bitmap: Bitmap): Bitmap = bitmap
 
     /** Deletes a stored image. Used when the rule that referenced it is deleted. */
     suspend fun discard(reference: String) = withContext(Dispatchers.IO) {
@@ -197,14 +162,5 @@ class WallpaperStore(context: Context) {
          * memory here.
          */
         const val MAX_WALLPAPER_PX = 4096
-
-        /**
-                 * How close two aspect ratios must be before the crop is skipped.
-                 *
-                 * A tenth of a percent. Loose enough that ordinary camera output is left alone, tight
-                 * enough that a genuinely different frame - a 4:3 photo on a 19.5:9 screen - is cropped
-                 * rather than squeezed.
-                 */
-                const val ASPECT_TOLERANCE = 0.001f
     }
 }
