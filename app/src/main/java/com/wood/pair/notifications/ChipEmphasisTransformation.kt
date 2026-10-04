@@ -55,7 +55,17 @@ object ChipEmphasisTransformation : VisualTransformation {
             // text and the styling and the two cannot drift apart.
             addStyle(
                 style = SpanStyle(
-                    fontWeight = FontWeight.Bold,
+                    // Heavier than the field's own weight, which is
+                    // [com.wood.pair.ui.theme.PairTypography.liveText] — Bold. This is the whole
+                    // trap in this feature: the type is already Bold, so applying *Bold* to the
+                    // chip's characters marks nothing at all and the feature is invisible while
+                    // every test still passes. The emphasised run has to exceed the base weight,
+                    // not match it.
+                    //
+                    // Black rather than a larger point size, because the brief is that the rest of
+                    // the text stays exactly as it is; only the chip's characters change, and the
+                    // emphasis has to come from weight alone.
+                    fontWeight = EMPHASIS_WEIGHT,
                     // The chip is a foreground status surface, never a link, so this deliberately
                     // clears any decoration the caller's style carried. A status that arrived
                     // with a link underline would otherwise be legible on the notification and
@@ -117,4 +127,14 @@ object ChipEmphasisTransformation : VisualTransformation {
      * than the range. Equivalent to `emphasisedRange(text)?.count() ?: 0`.
      */
     fun visibleLength(text: String): Int = emphasisedRange(text)?.count() ?: 0
+
+    /**
+     * The weight applied to the characters the chip will carry.
+     *
+     * Must be *heavier* than the field's own weight, which is Bold. Anything equal or lighter
+     * produces no visible change at all, because every character is already Bold — the failure is
+     * silent, the code reads correctly, and the tests that only assert on spans still pass. The
+     * render is what catches it, and it is the only thing that did.
+     */
+    val EMPHASIS_WEIGHT: FontWeight = FontWeight.Black
 }

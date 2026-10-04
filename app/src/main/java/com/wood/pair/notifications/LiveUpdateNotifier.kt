@@ -241,7 +241,23 @@ object LiveUpdateNotifier {
             Log.d(TAG, "Promoted Live Updates need API 36+; posting a plain ongoing notification")
         }
 
-        return builder.build()
+        val built = builder.build()
+
+        // What the notification actually carries, not what was intended.
+        //
+        // A `RemoteInput` action can be attached here and still never reach the screen: the
+        // platform renders a promoted Live Update from a curated action set, and it declines to
+        // show an inline reply on the lock screen. Without this line the two cases are
+        // indistinguishable from outside — "the field is not there" looks the same whether the
+        // action was never built or the platform dropped it.
+        val inline = built.actions.count { it.remoteInputs?.isNotEmpty() == true }
+        Log.i(
+            TAG,
+            "Built Live Update: ${built.actions.size} action(s), $inline with an inline text " +
+                "field; promoted=${built.flags and android.app.Notification.FLAG_PROMOTED_ONGOING != 0}",
+        )
+
+        return built
     }
 
     /** The two platform Live Update setters, both API 36+. */

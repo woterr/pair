@@ -4,6 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -92,6 +93,25 @@ class ChipEmphasisTransformationTest {
         // The chip shows "Headed" — the leading spaces collapse away entirely, so they must not
         // eat into the seven characters available for real text.
         assertEquals("Headed", text.substring(emphatic!!.first, emphatic.last + 1))
+    }
+
+    @Test
+    fun `the emphasised run is heavier than the field's own weight`() {
+        // The failure this exists to prevent. The field's text style is Bold, so emphasising the
+        // chip's characters *also* in Bold changes nothing on screen: the feature is invisible,
+        // the code reads correctly, and every other assertion here still passes. Nothing short of
+        // comparing the two weights catches it.
+        val fieldWeight = com.wood.pair.ui.theme.PairTypography.Default.liveText.fontWeight
+
+        assertNotNull(
+            "the field has no weight, so there is nothing to be heavier than",
+            fieldWeight,
+        )
+        assertTrue(
+            "emphasis (${ChipEmphasisTransformation.EMPHASIS_WEIGHT}) must be heavier than the " +
+                "field's own weight ($fieldWeight), or no character will look different",
+            ChipEmphasisTransformation.EMPHASIS_WEIGHT > fieldWeight!!,
+        )
     }
 
     @Test
