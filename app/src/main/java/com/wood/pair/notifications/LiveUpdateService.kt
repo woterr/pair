@@ -254,6 +254,11 @@ class LiveUpdateService : Service() {
         shown = text
         val notification = LiveUpdateNotifier.build(context = this, roomId = roomId, liveText = text)
         promote(notification, roomId)
+        // The widget shows the same status, and a widget is a snapshot rather than a live view —
+        // nothing would otherwise tell it the status had changed, and a widget showing a stale
+        // partner is worse than no widget. Repainted here rather than polled, so the surface that
+        // needs to be current is current without asking the launcher to wake the app on a timer.
+        scope.launch { com.wood.pair.widget.refreshWidgets(applicationContext) }
     }
 
     /** Takes the chip down and stops the service, because there is nothing left to show. */

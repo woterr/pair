@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Pair's home screen widget.
+
+    `resizeMode="horizontal|vertical"` so the launcher offers both axes, and `updatePeriodMillis`
+    is deliberately absent: Pair has no use for a periodic poll. The widget is repainted when the
+    Live Update is re-posted, which is already the moment the status changed — so the surface that
+    needs to be current is current, and the launcher is not asked to wake the app on a timer to
+    redraw a number it has not changed.
+
+    `widgetCategory="home_screen"` and no `keyguardCategory`: this is information about somebody
+    else, and it belongs where the user has chosen to put it rather than on a lock screen they did
+    not.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/ic_pair_wordmark"
+    android:widgetCategory="home_screen" />

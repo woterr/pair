@@ -47,6 +47,7 @@ class SettingsAndRulesRenderTest : ScreenRenderTest() {
                 onAmoledChange = {},
                 onLiveUpdateChange = {},
                 onOpenNotificationSettings = {},
+                onOpenLiveUpdateSettings = {},
                 onOpenBatterySettings = {},
                 onOpenLocationSettings = {},
                 onLeaveRoom = {},

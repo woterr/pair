@@ -171,6 +171,7 @@ fun SettingsScreen(
         onAmoledChange = viewModel::setAmoledDark,
         onLiveUpdateChange = viewModel::setLiveUpdateEnabled,
         onOpenNotificationSettings = { context.openNotificationSettings() },
+        onOpenLiveUpdateSettings = { context.openLiveUpdateSettings() },
         onOpenBatterySettings = { context.openBatterySettings() },
         onOpenLocationSettings = { context.openLocationSettings() },
         // Leaving is destructive and cannot be undone from the room, so it is confirmed.
@@ -284,6 +285,7 @@ internal fun SettingsContent(
     onAmoledChange: (Boolean) -> Unit,
     onLiveUpdateChange: (Boolean) -> Unit,
     onOpenNotificationSettings: () -> Unit,
+    onOpenLiveUpdateSettings: () -> Unit,
     onOpenBatterySettings: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onLeaveRoom: () -> Unit,
@@ -438,6 +440,30 @@ internal fun SettingsContent(
 
                 !canPromote -> SettingsStatusRow(
                     title = stringResource(R.string.settings_notification_support),
+                    action = {
+                        // Straight to the Live Updates screen. `canPostPromotedNotifications` is
+                        // false when the user has switched Live Updates off for Pair, and that
+                        // switch is not anywhere near the notification channel screen this row
+                        // used to send them to — so the fix and the symptom are in different
+                        // places, and a link to the wrong one leaves them hunting.
+                        TextButton(onClick = onOpenLiveUpdateSettings) {
+                            Text(stringResource(R.string.settings_open_settings))
+                        }
+                    },
+                )
+
+                // Granted, and still worth offering. The chip depends on two independent switches
+                // — Live Updates here, and a separate per-app setting for the always-on display —
+                // and finding the second one is a long way from this screen. Pair cannot set
+                // either of them; only take the user there.
+                canPromote -> SettingsStatusRow(
+                    title = stringResource(R.string.settings_live_update_manage),
+                    status = stringResource(R.string.settings_permission_granted),
+                    action = {
+                        TextButton(onClick = onOpenLiveUpdateSettings) {
+                            Text(stringResource(R.string.settings_open_settings))
+                        }
+                    },
                 )
             }
 
@@ -931,6 +957,39 @@ private fun Context.openNotificationSettings() {
     val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
         .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
     runCatching { startActivity(intent) }
+}
+
+/**
+ * Opens the system screen where Live Updates are switched on or off for this app.
+ *
+ * Distinct from [openNotificationSettings] on purpose: `ACTION_APP_NOTIFICATION_SETTINGS` does not
+ * carry the Live Updates switch, so sending someone there to fix a chip that is not appearing
+ * leaves them on the same page they were already on.
+ *
+ * The action is `ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS`, which is what the SDK calls it. The
+ * Live Updates documentation refers to the screen by a name that does not exist as a constant,
+ * which is worth knowing before anyone goes looking for it — `ACTION_MANAGE_APP_PROMOTED_
+ * NOTIFICATIONS` simply is not in the platform, and compiling against it fails.
+ *
+ * Guarded rather than assumed, because an unresolved action throws, the screen behind it varies
+ * by build, and a settings row that crashes the app is worse than one that quietly does nothing.
+ * Falls back to the notification settings, which at least gets them into the right app.
+ */
+private fun Context.openLiveUpdateSettings() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) {
+        openNotificationSettings()
+        return
+    }
+
+    val launched = runCatching {
+        startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }.isSuccess
+
+    if (!launched) openNotificationSettings()
 }
 
 private fun Context.openBatterySettings() {

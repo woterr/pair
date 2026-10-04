@@ -83,6 +83,12 @@
     <string name="settings_live_update_enabled">Show Live Update</string>
     <string name="settings_live_update_enabled_summary">Show the live text in the status bar</string>
     <string name="settings_live_update_permission">Notification permission</string>
+    <!--
+        The Live Updates switch is its own screen, separate from the notification channel one, and
+        a second per-app switch governs the always-on display. Both are outside the app's reach, so
+        all Pair can do is take the user there.
+    -->
+    <string name="settings_live_update_manage">Live Updates and always-on display</string>
     <string name="settings_permission_granted">Granted</string>
     <string name="settings_permission_denied">Not granted</string>
     <string name="settings_permission_blocked">Blocked in system settings</string>
@@ -153,6 +159,17 @@
     <string name="error_create_failed">Could not create a room.</string>
     <string name="error_join_failed">Could not join the room.</string>
     <string name="error_leave_failed">Could not leave the room cleanly.</string>
+
+    <!--
+        Home screen widget. Partner's status above, a hint at the bottom that the whole thing is
+        tappable — a widget has no text field of its own, so the tap opens the same status sheet
+        the Live Update opens.
+    -->
+    <string name="widget_partner">Your partner</string>
+    <string name="widget_no_partner">Nobody yet</string>
+    <string name="widget_nothing_yet">Nothing yet</string>
+    <string name="widget_set_status_hint">Tap to set your status</string>
+    <string name="widget_description">Your partner\'s live status. Tap to set your own.</string>
 
     <!--
         Set a status straight from the Live Update. Opened by tapping the notification body,

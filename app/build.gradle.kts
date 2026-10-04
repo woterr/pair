@@ -145,6 +145,13 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.window.size)
     implementation(libs.androidx.compose.material.icons.extended)
+
+    // --- Widget ---
+    // Glance rather than RemoteViews, so the widget is built from the same Compose vocabulary as
+    // the app and can carry the real dynamic colour scheme instead of approximating it from
+    // resource ids.
+    implementation(libs.androidx.glance)
+    implementation(libs.androidx.glance.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // --- Play services (geofencing) ---

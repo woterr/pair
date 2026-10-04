@@ -44,23 +44,32 @@ fun WaveUnderline(
     modifier: Modifier = Modifier,
     height: Dp = 6.dp,
     strokeWidth: Dp = 1.5.dp,
+    /**
+     * One crest-to-crest distance, in dp.
+     *
+     * Fixed rather than derived from [width], which is the whole point. The earlier version drew a
+     * fixed *number* of cycles across whatever width it was given, so a short status got two
+     * cramped humps and a long one got two stretched ones — the wavelength changed with the text,
+     * and a wave whose shape depends on how much you have typed is not a wave, it is a texture
+     * that happens to undulate. At a constant pitch the rule grows by adding crests as the status
+     * fills the chip's budget, which is both prettier and reads as "one more, one more", rather
+     * than "the same shape, squashed".
+     */
+    wavelength: Dp = 22.dp,
 ) {
     Box(modifier.width(width).height(height)) {
         Canvas(Modifier.width(width).height(height)) {
             val amplitude = size.height * 0.28f
             val midY = size.height / 2f
-            // Two full wavelengths across the rule. Fewer reads as a series of humps; more reads
-            // as a texture and stops being countable, which is the only thing it has to convey.
-            val cycles = 2f
-            val step = (size.width / 200f).coerceAtLeast(1f)
+            val pitch = wavelength.toPx()
+            if (pitch <= 0f) return@Canvas
 
             val path = Path()
             var x = 0f
             path.moveTo(0f, midY)
             while (x <= size.width) {
-                val phase = (x / size.width) * cycles * 2f * PI.toFloat()
-                path.lineTo(x, midY + amplitude * sin(phase))
-                x += step
+                path.lineTo(x, midY + amplitude * sin((x / pitch) * 2f * PI.toFloat()))
+                x += (pitch / 16f).coerceAtLeast(1f)
             }
 
             drawPath(

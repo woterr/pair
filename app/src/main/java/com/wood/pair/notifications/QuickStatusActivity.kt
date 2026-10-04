@@ -1,5 +1,8 @@
 package com.wood.pair.notifications
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -97,6 +100,25 @@ class QuickStatusActivity : ComponentActivity() {
     companion object {
         /** Must match the extra the notification's body intent is built with. */
         const val EXTRA_ROOM_ID = "roomId"
+
+        /**
+         * Shared with the notification's own intent so a widget tap and a notification tap resolve
+         * to the same component *and* the same action, differing only by `data`.
+         */
+        private const val ACTION_QUICK_STATUS = "com.wood.pair.action.QUICK_STATUS"
+
+        /**
+         * An intent to open this sheet for [roomId], for a caller that is not the notification —
+         * the home screen widget. Shares the component with the notification's own intent, so it
+         * carries the same action and a distinct `data`, or `PendingIntent` equality (which
+         * ignores extras) would resolve two different rooms to one intent.
+         */
+        fun intentFor(context: Context, roomId: String?): Intent =
+            Intent(context, QuickStatusActivity::class.java).apply {
+                putExtra(EXTRA_ROOM_ID, roomId)
+                action = ACTION_QUICK_STATUS
+                data = roomId?.let { Uri.parse("pair://quick-status/$it") }
+            }
     }
 }
 

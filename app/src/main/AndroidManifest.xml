@@ -131,6 +131,32 @@
             android:theme="@style/Theme.Pair" />
 
         <!--
+            The home screen widget.
+
+            `exported="true"` because the launcher has to reach it to place, render and update it.
+            That is the one place in this manifest where export is required, and it is required by
+            the platform rather than chosen: a widget the launcher cannot instantiate is not a
+            widget. Nothing about the room is exposed by it — the receiver only accepts the
+            platform's own broadcast actions, and the data it renders is already behind the
+            Realtime Database rules.
+
+            There is deliberately no `<intent-filter>` with a custom action here. The receiver
+            listens only for APPWIDGET_UPDATE and the rest, which is what the platform sends, so
+            another app cannot ask Pair to render one.
+        -->
+        <receiver
+            android:name=".widget.PairWidgetReceiver"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pair_widget_info" />
+        </receiver>
+
+        <!--
             Receives remote Live Update pushes. Runs when Pair is not in the foreground,
             which is the whole point: a Realtime Database listener alone cannot do this.
         -->
